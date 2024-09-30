@@ -3,7 +3,7 @@ import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
 from sqlalchemy import func 
-
+from enum import Enum
 
 class Contact(_database.Base):
     __tablename__ = "contacts"
@@ -40,11 +40,25 @@ class VehicleType(_database.Base):
     updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
     vehicles = relationship("Vehicle", back_populates="vehicle_type")
 
+class VehicleStatus(Enum):
+    INIT = 1
+    WASHED_ONLY = 2
+    WASHED_AND_FINISHED = 3
+
 class Vehicle(_database.Base):
     __tablename__ = 'vehicles'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
     vehicle_type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
+
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    is_urgency = _sql.Column(_sql.Boolean, nullable=False, default=False)
+    plate = _sql.Column(_sql.String(6), nullable=True)
+    vin_code_source = _sql.Column(_sql.Enum('qr', 'bar_code', name='vin_code_source_enum'), nullable=False)
+    is_damaged = _sql.Column(_sql.Boolean, nullable=False, default=False)
+    is_only_wash = _sql.Column(_sql.Boolean, nullable=False, default=False)
+    status = _sql.Column(_sql.Enum(VehicleStatus), nullable=False, default=VehicleStatus.INIT)
 
     model = relationship('Model', back_populates='vehicles')
     vehicle_type = relationship('VehicleType', back_populates='vehicles')
