@@ -29,7 +29,9 @@ class BrandCreate(BrandBase):
 
 class Brand(BrandBase):
     id: int
-
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+    
     class Config:
         from_attributes = True
 
@@ -46,6 +48,8 @@ class ModelCreate(ModelBase):
 class Model(ModelBase):
     id: int
     brand: Brand
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
 
     class Config:
         from_attributes = True

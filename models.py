@@ -18,6 +18,8 @@ class Brand(_database.Base):
     __tablename__ = 'brands'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     name = _sql.Column(_sql.String, unique=True, index=True)
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
     models = relationship("Model", back_populates="brand")
 
 class Model(_database.Base):
@@ -25,6 +27,8 @@ class Model(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     name = _sql.Column(_sql.String, index=True)
     brand_id = _sql.Column(_sql.Integer, _sql.ForeignKey('brands.id'))
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
     brand = relationship('Brand', back_populates='models')
     vehicles = relationship('Vehicle', back_populates='model')
 

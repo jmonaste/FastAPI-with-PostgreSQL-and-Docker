@@ -67,7 +67,11 @@ async def update_contact(
 async def create_brand(
     brand: _schemas.BrandCreate, db: "Session"
 ) -> _schemas.Brand:
-    brand_model = _models.Brand(**brand.dict())
+    brand_model = _models.Brand(
+        **brand.dict(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+        )
     db.add(brand_model)
     db.commit()
     db.refresh(brand_model)
@@ -114,7 +118,11 @@ async def create_model(
         raise HTTPException(status_code=404, detail=f"Brand with ID {model.brand_id} does not exist.")
     
     # Si la marca existe, continuar con la creación del modelo
-    model_obj = _models.Model(**model.dict())
+    model_obj = _models.Model(
+        **model.dict(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+        )
     db.add(model_obj)
     db.commit()
     db.refresh(model_obj)
