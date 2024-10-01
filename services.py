@@ -24,40 +24,6 @@ def get_db():
 
 
 
-# Eliminar, no sirven estos servicios para nada
-async def create_contact(
-    contact: _schemas.CreateContact, db: "Session"
-) -> _schemas.Contact:
-    contact = _models.Contact(**contact.dict())
-    db.add(contact)
-    db.commit()
-    db.refresh(contact)
-    return _schemas.Contact.from_orm(contact)
-
-async def get_all_contacts(db: "Session") -> List[_schemas.Contact]:
-    contacts = db.query(_models.Contact).all()
-    return list(map(_schemas.Contact.from_orm, contacts))
-
-async def get_contact(contact_id: int, db: "Session"):
-    contact = db.query(_models.Contact).filter(_models.Contact.id == contact_id).first()
-    return contact
-
-async def delete_contact(contact: _models.Contact, db: "Session"):
-    db.delete(contact)
-    db.commit()
-
-async def update_contact(
-    contact_data: _schemas.CreateContact, contact: _models.Contact, db: "Session"
-) -> _schemas.Contact:
-    contact.first_name = contact_data.first_name
-    contact.last_name = contact_data.last_name
-    contact.email = contact_data.email
-    contact.phone_number = contact_data.phone_number
-
-    db.commit()
-    db.refresh(contact)
-
-    return _schemas.Contact.from_orm(contact)
 
 
 
@@ -210,43 +176,4 @@ async def update_vehicle_type(
     return None
 
 
-# Vehicle Functions
-async def create_vehicle(
-    vehicle: _schemas.VehicleCreate, db: "Session"
-) -> _schemas.Vehicle:
-    vehicle_model = _models.Vehicle(**vehicle.dict())
-    db.add(vehicle_model)
-    db.commit()
-    db.refresh(vehicle_model)
-    return _schemas.Vehicle.from_orm(vehicle_model)
 
-async def get_all_vehicles(db: "Session") -> List[_schemas.Vehicle]:
-    vehicles = db.query(_models.Vehicle).all()
-    return list(map(_schemas.Vehicle.from_orm, vehicles))
-
-async def get_vehicle(vehicle_id: int, db: "Session") -> _schemas.Vehicle:
-    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
-    if vehicle:
-        return _schemas.Vehicle.from_orm(vehicle)
-    return None
-
-async def delete_vehicle(vehicle_id: int, db: "Session") -> bool:
-    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
-    if vehicle:
-        db.delete(vehicle)
-        db.commit()
-        return True
-    return False
-
-async def update_vehicle(
-    vehicle_data: _schemas.VehicleBase, vehicle_id: int, db: "Session"
-) -> _schemas.Vehicle:
-    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
-    if vehicle:
-        vehicle.model_id = vehicle_data.model_id
-        vehicle.vehicle_type_id = vehicle_data.vehicle_type_id
-
-        db.commit()
-        db.refresh(vehicle)
-        return _schemas.Vehicle.from_orm(vehicle)
-    return None
