@@ -3,9 +3,9 @@ import fastapi as _fastapi
 from fastapi import HTTPException, Depends
 import sqlalchemy.orm as _orm
 from sqlalchemy.orm import Session
-import models as _models
-import schemas as _schemas
-import services as _services
+from . import models as _models
+from . import schemas as _schemas
+from . import services as _services
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session

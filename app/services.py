@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, List
 from sqlalchemy.exc import IntegrityError
-import database as _database
-import models as _models
-import schemas as _schemas
+from . import database as _database
+from . import models as _models
+from . import schemas as _schemas
 from fastapi import HTTPException
 from datetime import datetime
 
@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 def _add_tables():
     return _database.Base.metadata.create_all(bind=_database.engine)
 
-
 def get_db():
     db = _database.SessionLocal()
     try:
@@ -22,17 +21,11 @@ def get_db():
         db.close()
 
 
-
-
-
-
-
-
 # Brand Functions
 async def create_brand(
     brand: _schemas.BrandCreate, db: "Session"
 ) -> _schemas.Brand:
-    brand_model = _models.Brand(
+    brand_model = _database.Brand(
         **brand.dict(),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -43,17 +36,17 @@ async def create_brand(
     return _schemas.Brand.from_orm(brand_model)
 
 async def get_all_brands(db: "Session") -> List[_schemas.Brand]:
-    brands = db.query(_models.Brand).all()
+    brands = db.query(_database.Brand).all()
     return list(map(_schemas.Brand.from_orm, brands))
 
 async def get_brand(brand_id: int, db: "Session") -> _schemas.Brand:
-    brand = db.query(_models.Brand).filter(_models.Brand.id == brand_id).first()
+    brand = db.query(_database.Brand).filter(_database.Brand.id == brand_id).first()
     if brand:
         return _schemas.Brand.from_orm(brand)
     return None
 
 async def delete_brand(brand_id: int, db: "Session") -> bool:
-    brand = db.query(_models.Brand).filter(_models.Brand.id == brand_id).first()
+    brand = db.query(_database.Brand).filter(_database.Brand.id == brand_id).first()
     if brand:
         db.delete(brand)
         db.commit()
@@ -63,7 +56,7 @@ async def delete_brand(brand_id: int, db: "Session") -> bool:
 async def update_brand(
     brand_data: _schemas.BrandBase, brand_id: int, db: "Session"
 ) -> _schemas.Brand:
-    brand = db.query(_models.Brand).filter(_models.Brand.id == brand_id).first()
+    brand = db.query(_database.Brand).filter(_database.Brand.id == brand_id).first()
     if brand:
         brand.name = brand_data.name
 
@@ -78,12 +71,12 @@ async def create_model(
     model: _schemas.ModelCreate, db: "Session"
 ) -> _schemas.Model:
     # Verificar si la marca existe
-    brand = db.query(_models.Brand).filter(_models.Brand.id == model.brand_id).first()
+    brand = db.query(_database.Brand).filter(_database.Brand.id == model.brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail=f"Brand with ID {model.brand_id} does not exist.")
     
     # Si la marca existe, continuar con la creación del modelo
-    model_obj = _models.Model(
+    model_obj = _database.Model(
         **model.dict(),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -93,18 +86,18 @@ async def create_model(
     db.refresh(model_obj)
     return _schemas.Model.from_orm(model_obj)
 
-async def get_all_models(db: "Session") -> List[_schemas.Model]:
-    models = db.query(_models.Model).all()
+async def get_all_database(db: "Session") -> List[_schemas.Model]:
+    models = db.query(_database.Model).all()
     return list(map(_schemas.Model.from_orm, models))
 
 async def get_model(model_id: int, db: "Session") -> _schemas.Model:
-    model = db.query(_models.Model).filter(_models.Model.id == model_id).first()
+    model = db.query(_database.Model).filter(_database.Model.id == model_id).first()
     if model:
         return _schemas.Model.from_orm(model)
     return None
 
 async def delete_model(model_id: int, db: "Session") -> bool:
-    model = db.query(_models.Model).filter(_models.Model.id == model_id).first()
+    model = db.query(_database.Model).filter(_database.Model.id == model_id).first()
     if model:
         db.delete(model)
         db.commit()
@@ -112,13 +105,13 @@ async def delete_model(model_id: int, db: "Session") -> bool:
     return False
 
 async def update_model(model_id: int, model: _schemas.ModelCreate, db: "Session"):
-    existing_model = db.query(_models.Model).filter(_models.Model.id == model_id).first()
+    existing_model = db.query(_database.Model).filter(_database.Model.id == model_id).first()
     
     if not existing_model:
         raise HTTPException(status_code=404, detail="Model not found")
 
     # Verificar si la marca existe
-    if not db.query(_models.Brand).filter(_models.Brand.id == model.brand_id).first():
+    if not db.query(_database.Brand).filter(_database.Brand.id == model.brand_id).first():
         raise HTTPException(status_code=404, detail="Brand not found")
 
     for key, value in model.dict(exclude_unset=True).items():
@@ -133,7 +126,7 @@ async def update_model(model_id: int, model: _schemas.ModelCreate, db: "Session"
 async def create_vehicle_type(
     vehicle_type: _schemas.VehicleTypeCreate, db: "Session"
 ) -> _schemas.VehicleType:
-    vehicle_type_model = _models.VehicleType(
+    vehicle_type_model = _database.VehicleType(
         **vehicle_type.dict(),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -145,17 +138,17 @@ async def create_vehicle_type(
     return _schemas.VehicleType.from_orm(vehicle_type_model)
 
 async def get_all_vehicle_types(db: "Session") -> List[_schemas.VehicleType]:
-    vehicle_types = db.query(_models.VehicleType).all()
+    vehicle_types = db.query(_database.VehicleType).all()
     return list(map(_schemas.VehicleType.from_orm, vehicle_types))
 
 async def get_vehicle_type(vehicle_type_id: int, db: "Session") -> _schemas.VehicleType:
-    vehicle_type = db.query(_models.VehicleType).filter(_models.VehicleType.id == vehicle_type_id).first()
+    vehicle_type = db.query(_database.VehicleType).filter(_database.VehicleType.id == vehicle_type_id).first()
     if vehicle_type:
         return _schemas.VehicleType.from_orm(vehicle_type)
     return None
 
 async def delete_vehicle_type(vehicle_type_id: int, db: "Session") -> bool:
-    vehicle_type = db.query(_models.VehicleType).filter(_models.VehicleType.id == vehicle_type_id).first()
+    vehicle_type = db.query(_database.VehicleType).filter(_database.VehicleType.id == vehicle_type_id).first()
     if vehicle_type:
         db.delete(vehicle_type)
         db.commit()
@@ -165,7 +158,7 @@ async def delete_vehicle_type(vehicle_type_id: int, db: "Session") -> bool:
 async def update_vehicle_type(
     vehicle_type_data: _schemas.VehicleTypeBase, vehicle_type_id: int, db: "Session"
 ) -> _schemas.VehicleType:
-    vehicle_type = db.query(_models.VehicleType).filter(_models.VehicleType.id == vehicle_type_id).first()
+    vehicle_type = db.query(_database.VehicleType).filter(_database.VehicleType.id == vehicle_type_id).first()
     if vehicle_type:
         vehicle_type.type_name = vehicle_type_data.type_name
 
