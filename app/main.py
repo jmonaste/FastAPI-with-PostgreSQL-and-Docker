@@ -13,53 +13,6 @@ if TYPE_CHECKING:
 app = _fastapi.FastAPI()
 
 
-@app.post("/api/contacts/", response_model=_schemas.Contact)
-async def create_contact(
-    contact: _schemas.CreateContact,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-):
-    return await _services.create_contact(contact=contact, db=db)
-
-@app.get("/api/contacts/", response_model=List[_schemas.Contact])
-async def get_contacts(db: _orm.Session = _fastapi.Depends(_services.get_db)):
-    return await _services.get_all_contacts(db=db)
-
-@app.get("/api/contacts/{contact_id}/", response_model=_schemas.Contact)
-async def get_contact(
-    contact_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
-):
-    contact = await _services.get_contact(db=db, contact_id=contact_id)
-    if contact is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Contact does not exist")
-
-    return contact
-
-@app.delete("/api/contacts/{contact_id}/")
-async def delete_contact(
-    contact_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
-):
-    contact = await _services.get_contact(db=db, contact_id=contact_id)
-    if contact is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Contact does not exist")
-
-    await _services.delete_contact(contact, db=db)
-
-    return "successfully deleted the user"
-
-@app.put("/api/contacts/{contact_id}/", response_model=_schemas.Contact)
-async def update_contact(
-    contact_id: int,
-    contact_data: _schemas.CreateContact,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-):
-    contact = await _services.get_contact(db=db, contact_id=contact_id)
-    if contact is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Contact does not exist")
-
-    return await _services.update_contact(
-        contact_data=contact_data, contact=contact, db=db
-    )
-
 
 
 
@@ -122,7 +75,7 @@ async def update_vehicle_type(
     )
 
 
-# Endpoints para Vehicle Types *********************************************************************************************
+# Endpoints para Brands *********************************************************************************************
 # Crear una nueva marca (Brand)
 @app.post("/api/brands/", response_model=_schemas.Brand)
 async def create_brand(
@@ -184,6 +137,7 @@ async def update_brand(
     )
 
 
+
 # Endpoints para Vehicule Model *********************************************************************************************
 # Crear un nuevo modelo de vehículo (Model)
 @app.post("/api/models", response_model=_schemas.Model)
@@ -203,12 +157,10 @@ async def create_model(
     # Llamar a la función de servicio para crear el modelo
     return await _services.create_model(model=model, db=db)
 
-
 # Obtener todos los modelos (Models)
 @app.get("/api/models", response_model=List[_schemas.Model])
 async def get_models(db: _orm.Session = _fastapi.Depends(_services.get_db)):
     return await _services.get_all_models(db=db)
-
 
 # Obtener un modelo por ID
 @app.get("/api/models/{model_id}", response_model=_schemas.Model)
@@ -220,7 +172,6 @@ async def get_model(
         raise _fastapi.HTTPException(status_code=404, detail="Model does not exist")
 
     return model
-
 
 # Eliminar un modelo por ID
 @app.delete("/api/models/{model_id}")
@@ -235,7 +186,6 @@ async def delete_model(
     
     return "Model successfully deleted"
 
-
 # Actualizar un modelo por ID
 @app.put("/api/models/{model_id}", response_model=_schemas.Model)
 async def update_model(
@@ -246,3 +196,6 @@ async def update_model(
         return updated_model
     except HTTPException as e:
         raise e
+
+
+# Endpoints para Vehicule *********************************************************************************************

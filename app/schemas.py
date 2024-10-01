@@ -3,21 +3,8 @@ import pydantic as _pydantic
 from enum import Enum
 from typing import Optional
 
-class _BaseContact(_pydantic.BaseModel):
-    first_name: str
-    last_name: str
-    email: str
-    phone_number: str
 
-class Contact(_BaseContact):
-    id: int
-    date_created: _dt.datetime
 
-    class Config:
-        from_attributes = True
-        
-class CreateContact(_BaseContact):
-    pass
 
 
 
@@ -79,26 +66,9 @@ class VinCodeSourceEnum(str, Enum):
     qr = 'qr'
     bar_code = 'bar_code'
 
+class VehicleStatus(Enum):
+    INIT = 1
+    WASHED_ONLY = 2
+    WASHED_AND_FINISHED = 3
 
-class VehicleBase(_pydantic.BaseModel):
-    vehicle_model_id: int
-    vehicle_type_id: int
-    is_urgency: bool
-    vin_code_source: VinCodeSourceEnum
-    is_damaged: bool
-    is_only_wash: bool
-    status: Optional[int]
 
-class VehicleCreate(VehicleBase):
-    plate: Optional[str] = None
-
-class Vehicle(VehicleBase):
-    id: int
-    vehicle_model: Model
-    vehicle_type: VehicleType
-    created_at: _dt.datetime
-    updated_at: _dt.datetime
-    plate: Optional[str] = None
-
-    class Config:
-        from_attributes = True
