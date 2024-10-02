@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+
+# Virtual environments
+env/
+venv/
+ENV/
+VENV/
+env.bak/
+venv.bak/
+.venv/
+
+# VSCode settings
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+*.env
+Dockerfile
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Migrations (if using Alembic or Django)
+migrations/
+alembic/versions/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Dependencies
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PostgreSQL
+pgdata/
+*.sql
