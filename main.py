@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 app = _fastapi.FastAPI()
 
 
-
-
-# Endpoints para Vehicle Types *********************************************************************************************
+# region Endpoints para Vehicle Types *********************************************************************************************
 
 @app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
 async def create_vehicle_type(
@@ -71,10 +69,10 @@ async def update_vehicle_type(
     return await _services.update_vehicle_type(
         vehicle_type_data=vehicle_type_data, vehicle_type_id=vehicle_type_id, db=db
     )
+# endregion
 
+# region Endpoints para Vehicle Types *********************************************************************************************
 
-# Endpoints para Vehicle Types *********************************************************************************************
-# Crear una nueva marca (Brand)
 @app.post("/api/brands/", response_model=_schemas.Brand)
 async def create_brand(
     brand: _schemas.BrandCreate,
@@ -89,13 +87,11 @@ async def create_brand(
     # Llamar a la función de servicio para crear la marca
     return await _services.create_brand(brand=brand, db=db)
 
-# Obtener todas las marcas (Brands)
 @app.get("/api/brands/", response_model=List[_schemas.Brand])
 async def get_brands(
     db: _orm.Session = _fastapi.Depends(_services.get_db)):
     return await _services.get_all_brands(db=db)
 
-# Obtener una marca por ID
 @app.get("/api/brands/{brand_id}/", response_model=_schemas.Brand)
 async def get_brand(
     brand_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
@@ -106,7 +102,6 @@ async def get_brand(
 
     return brand
 
-# Eliminar una marca por ID
 @app.delete("/api/brands/{brand_id}/")
 async def delete_brand(
     brand_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
@@ -119,7 +114,6 @@ async def delete_brand(
     
     return "Brand successfully deleted"
 
-# Actualizar una marca por ID
 @app.put("/api/brands/{brand_id}/", response_model=_schemas.Brand)
 async def update_brand(
     brand_id: int,
@@ -133,10 +127,10 @@ async def update_brand(
     return await _services.update_brand(
         brand_data=brand_data, brand_id=brand_id, db=db
     )
+# endregion
 
+# region Endpoints para Vehicule Model *********************************************************************************************
 
-# Endpoints para Vehicule Model *********************************************************************************************
-# Crear un nuevo modelo de vehículo (Model)
 @app.post("/api/models", response_model=_schemas.Model)
 async def create_model(
     model: _schemas.ModelCreate,
@@ -154,14 +148,10 @@ async def create_model(
     # Llamar a la función de servicio para crear el modelo
     return await _services.create_model(model=model, db=db)
 
-
-# Obtener todos los modelos (Models)
 @app.get("/api/models", response_model=List[_schemas.Model])
 async def get_models(db: _orm.Session = _fastapi.Depends(_services.get_db)):
     return await _services.get_all_models(db=db)
 
-
-# Obtener un modelo por ID
 @app.get("/api/models/{model_id}", response_model=_schemas.Model)
 async def get_model(
     model_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
@@ -172,8 +162,6 @@ async def get_model(
 
     return model
 
-
-# Eliminar un modelo por ID
 @app.delete("/api/models/{model_id}")
 async def delete_model(
     model_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
@@ -186,8 +174,6 @@ async def delete_model(
     
     return "Model successfully deleted"
 
-
-# Actualizar un modelo por ID
 @app.put("/api/models/{model_id}", response_model=_schemas.Model)
 async def update_model(
     model_id: int, model: _schemas.ModelCreate, db: Session = Depends(_services.get_db)
@@ -197,3 +183,85 @@ async def update_model(
         return updated_model
     except HTTPException as e:
         raise e
+
+# endregion
+
+# region Endpoints para Vehicule ***************************************************************************************************
+
+@app.post("/api/vehicles", response_model=_schemas.Vehicle)
+async def create_vehicle(
+    vehicle: _schemas.VehicleCreate,
+    db: Session = Depends(_services.get_db),
+):
+    # Verificar si el vehículo ya existe en la base de datos utilizando el VIN
+    existing_vehicle = db.query(_models.Vehicle).filter(
+        _models.Vehicle.vin == vehicle.vin  # 'vin' es el número de identificación único del vehículo
+    ).first()
+
+    if existing_vehicle:
+        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists")
+
+    # Verificar si el modelo de vehículo existe en la tabla models
+    existing_model = db.query(_models.Model).filter(
+        _models.Model.id == vehicle.vehicle_model_id  # Verificar que el vehicle_model_id es válido
+    ).first()
+
+    if not existing_model:
+        raise HTTPException(status_code=404, detail="Vehicle model not found")
+
+    # Crear el vehículo si todas las verificaciones son correctas
+    return await _services.create_vehicle(vehicle=vehicle, db=db)
+
+
+
+
+
+# Get Vehicle by ID
+@app.get("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
+def read_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
+    db_vehicle = _services.get_vehicle(db, vehicle_id=vehicle_id)
+    if db_vehicle is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return db_vehicle
+
+# Get All Vehicles
+@app.get("/api/vehicles/", response_model=List[_schemas.Vehicle])
+def read_vehicles(skip: int = 0, limit: int = 10, db: Session = Depends(_services.get_db)):
+    vehicles = _services.get_vehicles(db, skip=skip, limit=limit)
+    return vehicles
+
+# Update Vehicle
+@app.put("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
+def update_vehicle(vehicle_id: int, vehicle: _schemas.VehicleCreate, db: Session = Depends(_services.get_db)):
+    db_vehicle = _services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
+    if db_vehicle is None:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return db_vehicle
+
+# Delete Vehicle
+@app.delete("/vehicles/{vehicle_id}")
+def delete_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
+    success = _services.delete_vehicle(db=db, vehicle_id=vehicle_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return {"ok": True}
+# endregion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

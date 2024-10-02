@@ -34,9 +34,13 @@ class VehicleType(_database.Base):
 
 class Vehicle(_database.Base):
     __tablename__ = 'vehicles'
+
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
-    vehicle_type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
+    vehicle_model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
+    type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
+    vin = _sql.Column(_sql.String, unique=True, nullable=False, index=True)  # Código identificador del vehículo
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     model = relationship('Model', back_populates='vehicles')
     vehicle_type = relationship('VehicleType', back_populates='vehicles')

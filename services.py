@@ -9,10 +9,8 @@ from datetime import datetime
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-
 def _add_tables():
     return _database.Base.metadata.create_all(bind=_database.engine)
-
 
 def get_db():
     db = _database.SessionLocal()
@@ -22,14 +20,7 @@ def get_db():
         db.close()
 
 
-
-
-
-
-
-
-
-# Brand Functions
+# region Brand Functions
 async def create_brand(
     brand: _schemas.BrandCreate, db: "Session"
 ) -> _schemas.Brand:
@@ -73,8 +64,9 @@ async def update_brand(
         return _schemas.Brand.from_orm(brand)
     return None
 
+# endregion
 
-# Model Functions
+# region Model Functions
 async def create_model(
     model: _schemas.ModelCreate, db: "Session"
 ) -> _schemas.Model:
@@ -129,8 +121,9 @@ async def update_model(model_id: int, model: _schemas.ModelCreate, db: "Session"
     db.refresh(existing_model)
     return existing_model
 
+# endregion
 
-# VehicleType Functions
+# region VehicleType Functions
 async def create_vehicle_type(
     vehicle_type: _schemas.VehicleTypeCreate, db: "Session"
 ) -> _schemas.VehicleType:
@@ -174,6 +167,58 @@ async def update_vehicle_type(
         db.refresh(vehicle_type)
         return _schemas.VehicleType.from_orm(vehicle_type)
     return None
+
+# endregion
+
+# region Vehicle Functions
+
+
+
+# Create Vehicle
+async def create_vehicle(
+    vehicle: _schemas.VehicleCreate, db: "Session"
+) -> _schemas.Vehicle:
+    vehicle_model = _models.Vehicle(
+        **vehicle.dict(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+
+    db.add(vehicle_model)
+    db.commit()
+    db.refresh(vehicle_model)
+    return _schemas.Vehicle.from_orm(vehicle_model)
+
+# Get Vehicle by ID
+def get_vehicle(db: "Session", vehicle_id: int):
+    return db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+
+# Get All Vehicles with Pagination
+def get_vehicles(db: "Session", skip: int = 0, limit: int = 10):
+    return db.query(_models.Vehicle).offset(skip).limit(limit).all()
+
+# Update Vehicle
+def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
+    db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not db_vehicle:
+        return None
+    db_vehicle.model_id = vehicle.model_id
+    db_vehicle.vehicle_type_id = vehicle.vehicle_type_id
+    db_vehicle.vin = vehicle.vin
+    db.commit()
+    db.refresh(db_vehicle)
+    return db_vehicle
+
+# Delete Vehicle
+def delete_vehicle(db: "Session", vehicle_id: int):
+    db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not db_vehicle:
+        return False
+    db.delete(db_vehicle)
+    db.commit()
+    return True
+
+# endregion
 
 
 
