@@ -5,14 +5,6 @@ import database as _database
 from sqlalchemy import func 
 
 
-class Contact(_database.Base):
-    __tablename__ = "contacts"
-    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    first_name = _sql.Column(_sql.String, index=True)
-    last_name = _sql.Column(_sql.String, index=True)
-    email = _sql.Column(_sql.String, index=True, unique=True)
-    phone_number = _sql.Column(_sql.String, index=True, unique=True)
-    date_created = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
 
 class Brand(_database.Base):
     __tablename__ = 'brands'
@@ -42,9 +34,13 @@ class VehicleType(_database.Base):
 
 class Vehicle(_database.Base):
     __tablename__ = 'vehicles'
+
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
-    model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
-    vehicle_type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
+    vehicle_model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
+    type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
+    vin = _sql.Column(_sql.String, unique=True, nullable=False, index=True)  # Código identificador del vehículo
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     model = relationship('Model', back_populates='vehicles')
     vehicle_type = relationship('VehicleType', back_populates='vehicles')

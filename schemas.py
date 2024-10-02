@@ -2,24 +2,8 @@ import datetime as _dt
 import pydantic as _pydantic
 
 
-class _BaseContact(_pydantic.BaseModel):
-    first_name: str
-    last_name: str
-    email: str
-    phone_number: str
 
-class Contact(_BaseContact):
-    id: int
-    date_created: _dt.datetime
-
-    class Config:
-        from_attributes = True
-        
-class CreateContact(_BaseContact):
-    pass
-
-
-
+# region Brand definition
 
 class BrandBase(_pydantic.BaseModel):
     name: str
@@ -35,8 +19,9 @@ class Brand(BrandBase):
     class Config:
         from_attributes = True
 
+# endregion
 
-
+# region Model definition
 
 class ModelBase(_pydantic.BaseModel):
     name: str
@@ -54,10 +39,9 @@ class Model(ModelBase):
     class Config:
         from_attributes = True
 
+# endregion
 
-
-
-
+# region VehicleType definition
 
 class VehicleTypeBase(_pydantic.BaseModel):
     type_name: str
@@ -73,20 +57,24 @@ class VehicleType(VehicleTypeBase):
     class Config:
         from_attributes = True
 
+# endregion
 
-
+# region Vehicle definition
 
 class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
-    vehicle_type_id: int
+    type_id: int
+    vin: str
 
 class VehicleCreate(VehicleBase):
     pass
 
 class Vehicle(VehicleBase):
     id: int
-    vehicle_model: Model
-    vehicle_type: VehicleType
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
 
     class Config:
         from_attributes = True
+
+# endregion
