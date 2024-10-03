@@ -72,7 +72,6 @@ class VehicleCreate(VehicleBase):
 class Vehicle(VehicleBase):
     id: int
     model: Model  # Retornamos el modelo completo en la respuesta
-    vehicle_type: str  # Añadimos el tipo derivado del modelo
     created_at: _dt.datetime
     updated_at: _dt.datetime
 

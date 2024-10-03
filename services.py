@@ -5,6 +5,8 @@ import models as _models
 import schemas as _schemas
 from fastapi import HTTPException
 from datetime import datetime
+from sqlalchemy.orm import joinedload
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -194,8 +196,20 @@ def get_vehicle(db: "Session", vehicle_id: int):
     return db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
 
 # Get All Vehicles with Pagination
-def get_vehicles(db: "Session", skip: int = 0, limit: int = 10):
-    return db.query(_models.Vehicle).offset(skip).limit(limit).all()
+async def get_vehicles(db: "Session", skip: int = 0, limit: int = 10) -> List[_schemas.Vehicle]:
+    # Consulta con SQLAlchemy cargando las relaciones con joinedload
+    vehicles = (
+        db.query(_models.Vehicle)
+        .options(
+            joinedload(_models.Vehicle.model).joinedload(_models.Model.vehicle_type)  # Cargamos model y vehicle_type
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+    # Convierte los objetos del modelo ORM a esquemas Pydantic
+    return list(map(_schemas.Vehicle.from_orm, vehicles))
 
 # Update Vehicle
 def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):

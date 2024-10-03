@@ -40,16 +40,17 @@ class Vehicle(_database.Base):
 
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
     vehicle_model_id = _sql.Column(_sql.Integer, _sql.ForeignKey('models.id'))
-    type_id = _sql.Column(_sql.Integer, _sql.ForeignKey('vehicle_types.id'))
     vin = _sql.Column(_sql.String, unique=True, nullable=False, index=True)  # Código identificador del vehículo
     created_at = _sql.Column(_sql.DateTime, server_default=func.now())
     updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     model = relationship('Model', back_populates='vehicles')
-    
+
     # El tipo de vehículo se infiere del modelo
     @property
     def vehicle_type(self):
-        return self.model.vehicle_type.type_name  # El tipo se deriva del modelo
+        if self.model and self.model.vehicle_type:
+            return self.model.vehicle_type.type_name
+        return None  # O alguna alternativa predeterminada
 
 

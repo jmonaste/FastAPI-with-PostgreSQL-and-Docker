@@ -225,10 +225,11 @@ def read_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
     return db_vehicle
 
 # Get All Vehicles
-@app.get("/api/vehicles/", response_model=List[_schemas.Vehicle])
-def read_vehicles(skip: int = 0, limit: int = 10, db: Session = Depends(_services.get_db)):
-    vehicles = _services.get_vehicles(db, skip=skip, limit=limit)
+@app.get("/api/vehicles", response_model=List[_schemas.Vehicle])
+async def get_vehicles(skip: int = 0, limit: int = 10, db: Session = Depends(_services.get_db)):
+    vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
     return vehicles
+
 
 # Update Vehicle
 @app.put("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
