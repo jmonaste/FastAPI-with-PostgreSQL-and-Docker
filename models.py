@@ -3,7 +3,14 @@ import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
 from sqlalchemy import func 
+import sqlalchemy as sa
+from sqlalchemy import Enum
+from enums import VehicleStatus  # Importa el Enum
+from sqlalchemy.ext.declarative import declarative_base
 
+
+
+Base = declarative_base()
 
 
 class Brand(_database.Base):
@@ -45,7 +52,8 @@ class Vehicle(_database.Base):
     updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     is_urgent = _sql.Column(_sql.Boolean, default=False)  # Por defecto no es urgente
-
+    status = sa.Column(Enum(VehicleStatus), nullable=False, default=VehicleStatus.INI)
+    
     model = relationship('Model', back_populates='vehicles')
 
     # El tipo de vehículo se infiere del modelo
