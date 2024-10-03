@@ -44,6 +44,8 @@ class Vehicle(_database.Base):
     created_at = _sql.Column(_sql.DateTime, server_default=func.now())
     updated_at = _sql.Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
+    is_urgent = _sql.Column(_sql.Boolean, default=False)  # Por defecto no es urgente
+
     model = relationship('Model', back_populates='vehicles')
 
     # El tipo de vehículo se infiere del modelo

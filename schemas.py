@@ -65,6 +65,7 @@ class VehicleType(VehicleTypeBase):
 class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
     vin: str
+    is_urgent: bool
 
 class VehicleCreate(VehicleBase):
     pass
