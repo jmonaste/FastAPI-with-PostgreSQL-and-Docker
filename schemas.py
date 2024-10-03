@@ -26,6 +26,7 @@ class Brand(BrandBase):
 class ModelBase(_pydantic.BaseModel):
     name: str
     brand_id: int
+    type_id: int  # El tipo de vehículo se define a nivel de modelo
 
 class ModelCreate(ModelBase):
     pass
@@ -63,7 +64,6 @@ class VehicleType(VehicleTypeBase):
 
 class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
-    type_id: int
     vin: str
 
 class VehicleCreate(VehicleBase):
@@ -71,6 +71,8 @@ class VehicleCreate(VehicleBase):
 
 class Vehicle(VehicleBase):
     id: int
+    model: Model  # Retornamos el modelo completo en la respuesta
+    vehicle_type: str  # Añadimos el tipo derivado del modelo
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
