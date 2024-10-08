@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 app = _fastapi.FastAPI()
 
-
+# region Endpoints para Usuarios y Login *********************************************************************************************
 
 # Crear un nuevo usuario
 @app.post("/users/", response_model=UserRead)
@@ -58,25 +58,11 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+# endregion
 
 
 
 # region Endpoints para Vehicle Types *********************************************************************************************
-
-@app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
-async def create_vehicle_type(
-    vehicle_type: _schemas.VehicleTypeCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-):
-    # Comprobar si el tipo de vehículo ya existe
-    existing_type = db.query(_models.VehicleType).filter(_models.VehicleType.type_name == vehicle_type.type_name).first()
-    if existing_type:
-        raise HTTPException(status_code=409, detail="Vehicle Type already exist")
-    
-    # Llamar a la función de servicio para crear el tipo de vehículo
-    return await _services.create_vehicle_type(vehicle_type=vehicle_type, db=db)
-
-
 @app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
 async def create_vehicle_type(
     vehicle_type: _schemas.VehicleTypeCreate,
@@ -90,30 +76,20 @@ async def create_vehicle_type(
         raise HTTPException(status_code=409, detail="El tipo de vehículo ya existe")
 
     # Llamar a la función de servicio para crear el tipo de vehículo
-    return await _services.create_vehicle_type_service(vehicle_type=vehicle_type, db=db)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return await _services.create_vehicle_type(vehicle_type=vehicle_type, db=db)
 
 @app.get("/api/vehicle-types/", response_model=List[_schemas.VehicleType])
 async def get_vehicle_types(
-    db: _orm.Session = _fastapi.Depends(_services.get_db)):
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     return await _services.get_all_vehicle_types(db=db)
 
 @app.get("/api/vehicle-types/{vehicle_type_id}/", response_model=_schemas.VehicleType)
 async def get_vehicle_type(
-    vehicle_type_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    vehicle_type_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
@@ -123,7 +99,9 @@ async def get_vehicle_type(
 
 @app.delete("/api/vehicle-types/{vehicle_type_id}/")
 async def delete_vehicle_type(
-    vehicle_type_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    vehicle_type_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
@@ -138,6 +116,7 @@ async def update_vehicle_type(
     vehicle_type_id: int,
     vehicle_type_data: _schemas.VehicleTypeCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
@@ -154,6 +133,7 @@ async def update_vehicle_type(
 async def create_brand(
     brand: _schemas.BrandCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     # Comprobar si la marca ya existe
     existing_brand = db.query(_models.Brand).filter(_models.Brand.name == brand.name).first()
@@ -166,12 +146,16 @@ async def create_brand(
 
 @app.get("/api/brands/", response_model=List[_schemas.Brand])
 async def get_brands(
-    db: _orm.Session = _fastapi.Depends(_services.get_db)):
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     return await _services.get_all_brands(db=db)
 
 @app.get("/api/brands/{brand_id}/", response_model=_schemas.Brand)
 async def get_brand(
-    brand_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    brand_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     brand = await _services.get_brand(db=db, brand_id=brand_id)
     if brand is None:
@@ -181,7 +165,9 @@ async def get_brand(
 
 @app.delete("/api/brands/{brand_id}/")
 async def delete_brand(
-    brand_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    brand_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     brand = await _services.get_brand(db=db, brand_id=brand_id)
     if brand is None:
@@ -196,6 +182,7 @@ async def update_brand(
     brand_id: int,
     brand_data: _schemas.BrandCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     brand = await _services.get_brand(db=db, brand_id=brand_id)
     if brand is None:
@@ -212,6 +199,7 @@ async def update_brand(
 async def create_model(
     model: _schemas.ModelCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     # Comprobar si el modelo ya existe
     existing_model = db.query(_models.Model).filter(
@@ -226,12 +214,17 @@ async def create_model(
     return await _services.create_model(model=model, db=db)
 
 @app.get("/api/models", response_model=List[_schemas.Model])
-async def get_models(db: _orm.Session = _fastapi.Depends(_services.get_db)):
+async def get_models(
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),                 
+):
     return await _services.get_all_models(db=db)
 
 @app.get("/api/models/{model_id}", response_model=_schemas.Model)
 async def get_model(
-    model_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    model_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     model = await _services.get_model(db=db, model_id=model_id)
     if model is None:
@@ -241,7 +234,9 @@ async def get_model(
 
 @app.delete("/api/models/{model_id}")
 async def delete_model(
-    model_id: int, db: _orm.Session = _fastapi.Depends(_services.get_db)
+    model_id: int, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     model = await _services.get_model(db=db, model_id=model_id)
     if model is None:
@@ -253,7 +248,10 @@ async def delete_model(
 
 @app.put("/api/models/{model_id}", response_model=_schemas.Model)
 async def update_model(
-    model_id: int, model: _schemas.ModelCreate, db: Session = Depends(_services.get_db)
+    model_id: int, 
+    model: _schemas.ModelCreate, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         updated_model = await _services.update_model(model_id, model, db)
@@ -269,6 +267,7 @@ async def update_model(
 async def create_vehicle(
     vehicle: _schemas.VehicleCreate,
     db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
 ):
     # Verificar si el vehículo ya existe en la base de datos utilizando el VIN
     existing_vehicle = db.query(_models.Vehicle).filter(
@@ -290,12 +289,13 @@ async def create_vehicle(
     return await _services.create_vehicle(vehicle=vehicle, db=db)
 
 
-
-
-
 # Get Vehicle by ID
 @app.get("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
-def read_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
+def read_vehicle(
+    vehicle_id: int, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     db_vehicle = _services.get_vehicle(db, vehicle_id=vehicle_id)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -303,14 +303,24 @@ def read_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
 
 # Get All Vehicles
 @app.get("/api/vehicles", response_model=List[_schemas.Vehicle])
-async def get_vehicles(skip: int = 0, limit: int = 10, db: Session = Depends(_services.get_db)):
+async def get_vehicles(
+    skip: int = 0, 
+    limit: int = 10, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
     return vehicles
 
 
 # Update Vehicle
 @app.put("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
-def update_vehicle(vehicle_id: int, vehicle: _schemas.VehicleCreate, db: Session = Depends(_services.get_db)):
+def update_vehicle(
+    vehicle_id: int, 
+    vehicle: _schemas.VehicleCreate, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     db_vehicle = _services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -318,11 +328,16 @@ def update_vehicle(vehicle_id: int, vehicle: _schemas.VehicleCreate, db: Session
 
 # Delete Vehicle
 @app.delete("/vehicles/{vehicle_id}")
-def delete_vehicle(vehicle_id: int, db: Session = Depends(_services.get_db)):
+def delete_vehicle(
+    vehicle_id: int, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
     success = _services.delete_vehicle(db=db, vehicle_id=vehicle_id)
     if not success:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return {"ok": True}
+
 # endregion
 
 
