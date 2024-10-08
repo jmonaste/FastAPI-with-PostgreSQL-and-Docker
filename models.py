@@ -1,9 +1,9 @@
 import datetime as _dt
+import sqlalchemy as sa
 import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
-from sqlalchemy import func 
-import sqlalchemy as sa
+from sqlalchemy import func, Enum,  Column, Integer, String
 from sqlalchemy import Enum
 from enums import VehicleStatus  # Importa el Enum
 from sqlalchemy.ext.declarative import declarative_base
@@ -11,6 +11,15 @@ from sqlalchemy.ext.declarative import declarative_base
 
 
 Base = declarative_base()
+
+
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+
 
 
 class Brand(_database.Base):

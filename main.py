@@ -1,16 +1,64 @@
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, status
 import sqlalchemy.orm as _orm
 from sqlalchemy.orm import Session
 import models as _models
+from models import User
 import schemas as _schemas
 import services as _services
+from schemas import UserCreate, UserRead
+from utils import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from dependencies import get_db, get_current_user
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
+from dependencies import get_current_user
+
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 app = _fastapi.FastAPI()
+
+
+
+# Crear un nuevo usuario
+@app.post("/users/", response_model=UserRead)
+async def create_user(
+    user: UserCreate, 
+    db: _orm.Session = _fastapi.Depends(_services.get_db)
+):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
+    hashed_password = get_password_hash(user.password)
+    new_user = User(username=user.username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+# Endpoint para autenticación y obtención del token
+@app.post("/token")
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: _orm.Session = _fastapi.Depends(_services.get_db)):
+    user = db.query(User).filter(User.username == form_data.username).first()
+
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nombre de usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 
 
 # region Endpoints para Vehicle Types *********************************************************************************************
@@ -22,12 +70,41 @@ async def create_vehicle_type(
 ):
     # Comprobar si el tipo de vehículo ya existe
     existing_type = db.query(_models.VehicleType).filter(_models.VehicleType.type_name == vehicle_type.type_name).first()
-    
     if existing_type:
         raise HTTPException(status_code=409, detail="Vehicle Type already exist")
-
+    
     # Llamar a la función de servicio para crear el tipo de vehículo
     return await _services.create_vehicle_type(vehicle_type=vehicle_type, db=db)
+
+
+@app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
+async def create_vehicle_type(
+    vehicle_type: _schemas.VehicleTypeCreate,
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),  # Añadido para autenticación
+):
+    # Comprobar si el tipo de vehículo ya existe
+    existing_type = db.query(_models.VehicleType).filter(_models.VehicleType.type_name == vehicle_type.type_name).first()
+    
+    if existing_type:
+        raise HTTPException(status_code=409, detail="El tipo de vehículo ya existe")
+
+    # Llamar a la función de servicio para crear el tipo de vehículo
+    return await _services.create_vehicle_type_service(vehicle_type=vehicle_type, db=db)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @app.get("/api/vehicle-types/", response_model=List[_schemas.VehicleType])
 async def get_vehicle_types(
