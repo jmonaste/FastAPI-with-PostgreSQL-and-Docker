@@ -13,13 +13,22 @@ from dependencies import get_db, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 from dependencies import get_current_user
-
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 app = _fastapi.FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir todas las solicitudes desde cualquier origen
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos HTTP (POST, GET, etc.)
+    allow_headers=["*"],  # Permitir todas las cabeceras
+)
 
 # region Endpoints para Usuarios y Login *********************************************************************************************
 
@@ -60,8 +69,6 @@ async def login_for_access_token(
 
 # endregion
 
-
-
 # region Endpoints para Vehicle Types *********************************************************************************************
 @app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
 async def create_vehicle_type(
@@ -83,7 +90,23 @@ async def get_vehicle_types(
     db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await _services.get_all_vehicle_types(db=db)
+    vehicle_types = await _services.get_all_vehicle_types(db=db)
+    
+    # Convertir los campos de datetime a cadenas
+    vehicle_types_serialized = [
+        {
+            "type_name": vt.type_name,
+            "id": vt.id,
+            "created_at": vt.created_at.isoformat() if isinstance(vt.created_at, datetime) else vt.created_at,
+            "updated_at": vt.updated_at.isoformat() if isinstance(vt.updated_at, datetime) else vt.updated_at,
+        }
+        for vt in vehicle_types
+    ]
+    
+    return JSONResponse(
+        content=vehicle_types_serialized,
+        headers={"Content-Type": "application/json; charset=utf-8"}
+    )
 
 @app.get("/api/vehicle-types/{vehicle_type_id}/", response_model=_schemas.VehicleType)
 async def get_vehicle_type(
