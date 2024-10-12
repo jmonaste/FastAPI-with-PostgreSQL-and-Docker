@@ -1,27 +1,25 @@
 from typing import TYPE_CHECKING, List
-import fastapi as _fastapi
-from fastapi import HTTPException, Depends, status
-from fastapi import File, UploadFile, Depends
-import sqlalchemy.orm as _orm
+from fastapi import HTTPException, Depends, status, File, UploadFile
 from sqlalchemy.orm import Session
-import models as _models
-from models import User
-import schemas as _schemas
-import services as _services
 from schemas import UserCreate, UserRead
 from utils import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from dependencies import get_db, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import datetime, timedelta
-from dependencies import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from datetime import datetime, timedelta
+from dependencies import get_current_user
 from pyzbar.pyzbar import decode
 from PIL import Image
+from models import User
+
+import fastapi as _fastapi
+import sqlalchemy.orm as _orm
+import models as _models
+import schemas as _schemas
+import services as _services
 import io
 import imghdr
-
-
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -41,6 +39,7 @@ app.add_middleware(
     allow_methods=["*"],  # Permitir todos los métodos HTTP (POST, GET, etc.)
     allow_headers=["*"],  # Permitir todas las cabeceras
 )
+
 
 # region Endpoints para Usuarios y Login *********************************************************************************************
 
@@ -382,7 +381,10 @@ def delete_vehicle(
 allowed_extensions = {"image/jpeg", "image/jpg", "image/png", "image/heic"}
 
 @app.post("/scan")
-async def scan_qr_barcode(file: UploadFile = File(...)):
+async def scan_qr_barcode(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),  # Añadido para autenticación
+):
     print(f"File content type: {file.content_type}")
     # Verificar el tipo de archivo
     if file.content_type not in allowed_extensions:
