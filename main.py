@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List
 import fastapi as _fastapi
 from fastapi import HTTPException, Depends, status
+from fastapi import File, UploadFile, Depends
 import sqlalchemy.orm as _orm
 from sqlalchemy.orm import Session
 import models as _models
@@ -15,10 +16,21 @@ from datetime import datetime, timedelta
 from dependencies import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pyzbar.pyzbar import decode
+from PIL import Image
+import io
+import imghdr
+
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+# Para manejar HEIC
+try:
+    import pyheif
+except ImportError:
+    pyheif = None
 
 app = _fastapi.FastAPI()
 
@@ -364,7 +376,51 @@ def delete_vehicle(
 # endregion
 
 
+# region Endpoint para recibir imagenes qr y barcode
 
+# Verificar los tipos de imagen permitidos
+allowed_extensions = {"image/jpeg", "image/jpg", "image/png", "image/heic"}
+
+@app.post("/scan")
+async def scan_qr_barcode(file: UploadFile = File(...)):
+    print(f"File content type: {file.content_type}")
+    # Verificar el tipo de archivo
+    if file.content_type not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+    
+    
+    contents = await file.read()
+
+    # Manejo de imágenes HEIC
+    if file.content_type == "image/heic":
+        if pyheif is None:
+            raise HTTPException(status_code=500, detail="HEIC format not supported. Install pyheif library.")
+        
+        heif_file = pyheif.read_heif(io.BytesIO(contents))
+        image = Image.frombytes(heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.stride)
+    else:
+        # Si no es HEIC, intentar abrir como imagen regular con PIL
+        image = Image.open(io.BytesIO(contents))
+
+    # Decodificar el código QR o de barras usando pyzbar
+    decoded_objects = decode(image)
+    
+    if not decoded_objects:
+        return JSONResponse(content={"error": "No QR or Barcode detected"}, status_code=400)
+    
+    # Procesar los códigos detectados
+    result_data = []
+    for obj in decoded_objects:
+        code_type = "QR Code" if obj.type == "QRCODE" else "Barcode"
+        result_data.append({
+            "type": code_type,
+            "data": obj.data.decode("utf-8")
+        })
+
+    # Devolver la lista de códigos detectados junto con su tipo
+    return {"detected_codes": result_data}
+
+# endregion
 
 
 
