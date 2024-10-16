@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from schemas import UserCreate, UserRead
 from utils import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from dependencies import get_db, get_current_user
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
@@ -31,6 +31,10 @@ except ImportError:
     pyheif = None
 
 app = _fastapi.FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+revoked_tokens = set() # Lista para almacenar tokens revocados
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +81,23 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/logout")
+async def logout(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+):
+    if token in revoked_tokens:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El token ya ha sido revocado."
+        )
+    
+    # Revocar el token actual
+    revoked_tokens.add(token)
+    return {"message": "Sesión cerrada correctamente. Token revocado."}
 
 # endregion
 
