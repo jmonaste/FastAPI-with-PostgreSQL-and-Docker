@@ -179,10 +179,24 @@ async def update_vehicle_type(
 
 # Create Vehicle
 async def create_vehicle(
-    vehicle: _schemas.VehicleCreate, db: "Session"
+    vehicle: _schemas.VehicleCreate, db: "Session", user_id: int
 ) -> _schemas.Vehicle:
-    vehicle_data = vehicle.dict(exclude_unset=True)
+    
+     # Obtener el estado inicial desde la base de datos
+    initial_state = db.query(_models.State).filter_by(is_initial=True).first()
 
+    if not initial_state:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No initial state configured in the system."
+        )
+
+
+    # Agregar el estado inicial a los datos del vehículo
+    vehicle_data = vehicle.dict(exclude_unset=True)
+    vehicle_data.update({"status_id": initial_state.id})
+
+    # Crear el modelo de vehículo
     vehicle_model = _models.Vehicle(
         **vehicle_data,
         created_at=datetime.utcnow(),
@@ -192,6 +206,17 @@ async def create_vehicle(
     db.add(vehicle_model)
     db.commit()
     db.refresh(vehicle_model)
+
+    # Registrar el estado inicial en el historial
+    await register_state_history(
+        vehicle_id=vehicle_model.id,
+        from_state_id=None,  # No hay estado previo ya que es el primer estado
+        to_state_id=vehicle_model.status_id,  # Estado inicial
+        user_id=user_id,
+        db=db,
+        comments="Creación del vehículo con estado inicial"
+    )
+
     return _schemas.Vehicle.from_orm(vehicle_model)
 
 # Get Vehicle by ID
@@ -237,5 +262,28 @@ def delete_vehicle(db: "Session", vehicle_id: int):
 
 # endregion
 
+# region State Management Functions
 
+# Register Vehicle State History
+async def register_state_history(
+    vehicle_id: int, 
+    from_state_id: int, 
+    to_state_id: int, 
+    user_id: int, 
+    db: "Session",
+    comments: str = ""
+):
+    state_history_entry = _models.StateHistory(
+        vehicle_id=vehicle_id,
+        from_state_id=from_state_id,
+        to_state_id=to_state_id,
+        user_id=user_id,
+        timestamp=datetime.utcnow(),
+        comments=comments
+    )
+
+    db.add(state_history_entry)
+    db.commit()
+
+# endregion
 

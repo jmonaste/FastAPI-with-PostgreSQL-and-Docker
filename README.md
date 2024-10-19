@@ -35,3 +35,21 @@ El proyecto está configurado para ejecutarse en un contenedor Docker, lo cual f
 
 ```bash
 netstat -ano | findstr :5432
+```
+
+## Arranque del servidor Uvicorn
+
+Para arrancar el servidor, teclea el siguiente comando:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Migraciones a la base de datos con Almebic
+
+Para migrar los cambios a la base de datos, puedes usar los siguientes comandos:
+
+```bash
+alembic revision --autogenerate -m "Comentario de la migración"
+alembic upgrade head
+```

@@ -320,7 +320,7 @@ async def create_vehicle(
     db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    
+
     try:
         existing_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.vin == vehicle.vin).first()
     except Exception as e:
@@ -338,19 +338,10 @@ async def create_vehicle(
     if not existing_model:
         raise HTTPException(status_code=404, detail="Vehicle model not found.")
 
-    # Asignar el estado inicial
-    initial_state = db.query(_models.State).filter_by(is_initial=True).first()
-    if not initial_state:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No initial state configured in the system."
-        )
-    
-    vehicle = vehicle.model_copy(update={"status_id": initial_state.id})
-
+    return await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
     try:
         # Crear el vehículo si todas las verificaciones son correctas
-        return await _services.create_vehicle(vehicle=vehicle, db=db)
+        return await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -458,7 +449,11 @@ async def scan_qr_barcode(
 
 # endregion
 
+# region Endpoint para la gestión de estados permitidos
 
+
+
+# endregion
 
 
 

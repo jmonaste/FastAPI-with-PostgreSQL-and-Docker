@@ -2,13 +2,11 @@ import datetime as _dt
 import pydantic as _pydantic
 from models import VehicleStatus
 from pydantic import BaseModel
-
+from typing import Optional, List
 
 
 
 # region User definition
-
-from pydantic import BaseModel
 
 class UserBase(BaseModel):
     username: str
@@ -90,7 +88,6 @@ class VehicleBase(_pydantic.BaseModel):
     
     class Config:
         arbitrary_types_allowed = True  # Permite tipos arbitrarios
-        extra = "allow"  # Permite campos extra
 
 class VehicleCreate(VehicleBase):
     pass
@@ -106,3 +103,91 @@ class Vehicle(VehicleBase):
         from_attributes = True
 
 # endregion
+
+
+
+# region State definition
+
+class StateBase(BaseModel):
+    code: str
+    name: str
+    description: str
+    is_initial: bool = False
+    is_final: bool = False
+    order: Optional[int]
+    active: bool = True
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    category: Optional[str] = None
+    comments: Optional[str] = None
+
+class StateCreate(StateBase):
+    pass
+
+class StateUpdate(StateBase):
+    pass
+
+class State(StateBase):
+    id: int
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+
+    class Config:
+        from_attributes = True
+
+# endregion
+
+# region Transition definition
+
+class TransitionBase(BaseModel):
+    from_state_id: int
+    to_state_id: int
+    condition: Optional[str] = None
+    action: Optional[str] = None
+    active: bool = True
+
+class TransitionCreate(TransitionBase):
+    pass
+
+class TransitionUpdate(TransitionBase):
+    pass
+
+class Transition(TransitionBase):
+    id: int
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+
+    class Config:
+        from_attributes = True
+
+# endregion
+
+# region StateHistory definition
+
+class StateHistoryBase(BaseModel):
+    vehicle_id: int
+    from_state_id: Optional[int] = None
+    to_state_id: int
+    user_id: int
+    comments: Optional[str] = None
+
+class StateHistoryCreate(StateHistoryBase):
+    pass
+
+class StateHistoryUpdate(StateHistoryBase):
+    pass
+
+class StateHistory(StateHistoryBase):
+    id: int
+    timestamp: _dt.datetime
+
+    class Config:
+        from_attributes = True
+        
+# endregion
+
+
+
+
+
+
