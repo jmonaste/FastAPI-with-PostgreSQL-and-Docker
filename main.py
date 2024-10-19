@@ -24,11 +24,7 @@ import imghdr
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-# Para manejar HEIC
-try:
-    import pyheif
-except ImportError:
-    pyheif = None
+
 
 app = _fastapi.FastAPI()
 
@@ -321,27 +317,45 @@ async def update_model(
 @app.post("/api/vehicles", response_model=_schemas.Vehicle)
 async def create_vehicle(
     vehicle: _schemas.VehicleCreate,
-    db: Session = Depends(_services.get_db),
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Verificar si el vehículo ya existe en la base de datos utilizando el VIN
-    existing_vehicle = db.query(_models.Vehicle).filter(
-        _models.Vehicle.vin == vehicle.vin  # 'vin' es el número de identificación único del vehículo
-    ).first()
+    
+    try:
+        existing_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.vin == vehicle.vin).first()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cannot check if this VIN already exists."
+        )
 
     if existing_vehicle:
-        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists")
+        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
 
     # Verificar si el modelo de vehículo existe en la tabla models
-    existing_model = db.query(_models.Model).filter(
-        _models.Model.id == vehicle.vehicle_model_id  # Verificar que el vehicle_model_id es válido
-    ).first()
+    existing_model = db.query(_models.Model).filter(_models.Model.id == vehicle.vehicle_model_id).first()
 
     if not existing_model:
-        raise HTTPException(status_code=404, detail="Vehicle model not found")
+        raise HTTPException(status_code=404, detail="Vehicle model not found.")
 
-    # Crear el vehículo si todas las verificaciones son correctas
-    return await _services.create_vehicle(vehicle=vehicle, db=db)
+    # Asignar el estado inicial
+    initial_state = db.query(_models.State).filter_by(is_initial=True).first()
+    if not initial_state:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No initial state configured in the system."
+        )
+    
+    vehicle = vehicle.model_copy(update={"status_id": initial_state.id})
+
+    try:
+        # Crear el vehículo si todas las verificaciones son correctas
+        return await _services.create_vehicle(vehicle=vehicle, db=db)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while creating the vehicle."
+        )
 
 
 # Get Vehicle by ID
@@ -366,7 +380,6 @@ async def get_vehicles(
 ):
     vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
     return vehicles
-
 
 # Update Vehicle
 @app.put("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)

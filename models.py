@@ -114,5 +114,5 @@ class Transition(_database.Base):
         onupdate=func.now()
     )
 
-    from_state = relationship('State', foreign_keys=[from_state_id], backref='transitions_from')
-    to_state = relationship('State', foreign_keys=[to_state_id], backref='transitions_to')
+    from_state = relationship('State', foreign_keys=[from_state_id], back_populates='transitions_from')
+    to_state = relationship('State', foreign_keys=[to_state_id], back_populates='transitions_to')

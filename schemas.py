@@ -87,19 +87,20 @@ class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
     vin: str
     is_urgent: bool
-
+    
     class Config:
         arbitrary_types_allowed = True  # Permite tipos arbitrarios
+        extra = "allow"  # Permite campos extra
 
 class VehicleCreate(VehicleBase):
     pass
 
 class Vehicle(VehicleBase):
     id: int
+    status_id: int
     model: Model  # Retornamos el modelo completo en la respuesta
     created_at: _dt.datetime
     updated_at: _dt.datetime
-    status: VehicleStatus
 
     class Config:
         from_attributes = True

@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING, List
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 import database as _database
 import models as _models
 import schemas as _schemas
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 
@@ -180,8 +181,10 @@ async def update_vehicle_type(
 async def create_vehicle(
     vehicle: _schemas.VehicleCreate, db: "Session"
 ) -> _schemas.Vehicle:
+    vehicle_data = vehicle.dict(exclude_unset=True)
+
     vehicle_model = _models.Vehicle(
-        **vehicle.dict(),
+        **vehicle_data,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
