@@ -191,7 +191,6 @@ async def create_vehicle(
             detail="No initial state configured in the system."
         )
 
-
     # Agregar el estado inicial a los datos del vehículo
     vehicle_data = vehicle.dict(exclude_unset=True)
     vehicle_data.update({"status_id": initial_state.id})
@@ -254,8 +253,14 @@ def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCrea
 # Delete Vehicle
 def delete_vehicle(db: "Session", vehicle_id: int):
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+
     if not db_vehicle:
         return False
+    
+    # Borrar el historial de estados asociado al vehículo
+    db.query(_models.StateHistory).filter(_models.StateHistory.vehicle_id == vehicle_id).delete()
+
+    # Borrar el vehículo
     db.delete(db_vehicle)
     db.commit()
     return True
@@ -264,7 +269,6 @@ def delete_vehicle(db: "Session", vehicle_id: int):
 
 # region State Management Functions
 
-# Register Vehicle State History
 async def register_state_history(
     vehicle_id: int, 
     from_state_id: int, 

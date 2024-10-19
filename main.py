@@ -312,7 +312,7 @@ async def update_model(
 
 # endregion
 
-# region Endpoints para Vehicule ***************************************************************************************************
+# region Endpoints para Vehicle ***************************************************************************************************
 
 @app.post("/api/vehicles", response_model=_schemas.Vehicle)
 async def create_vehicle(
@@ -338,7 +338,6 @@ async def create_vehicle(
     if not existing_model:
         raise HTTPException(status_code=404, detail="Vehicle model not found.")
 
-    return await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
     try:
         # Crear el vehículo si todas las verificaciones son correctas
         return await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
@@ -348,9 +347,7 @@ async def create_vehicle(
             detail="Error while creating the vehicle."
         )
 
-
-# Get Vehicle by ID
-@app.get("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
+@app.get("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
 def read_vehicle(
     vehicle_id: int, 
     db: Session = Depends(_services.get_db),
@@ -361,7 +358,6 @@ def read_vehicle(
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
 
-# Get All Vehicles
 @app.get("/api/vehicles", response_model=List[_schemas.Vehicle])
 async def get_vehicles(
     skip: int = 0, 
@@ -372,8 +368,7 @@ async def get_vehicles(
     vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
     return vehicles
 
-# Update Vehicle
-@app.put("/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
+@app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
 def update_vehicle(
     vehicle_id: int, 
     vehicle: _schemas.VehicleCreate, 
@@ -385,8 +380,7 @@ def update_vehicle(
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
 
-# Delete Vehicle
-@app.delete("/vehicles/{vehicle_id}")
+@app.delete("/api/vehicles/{vehicle_id}")
 def delete_vehicle(
     vehicle_id: int, 
     db: Session = Depends(_services.get_db),
