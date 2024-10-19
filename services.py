@@ -284,6 +284,7 @@ async def register_state_history(
 
     db.add(state_history_entry)
     db.commit()
+    db.refresh(state_history_entry)
 
 # endregion
 
