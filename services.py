@@ -290,5 +290,24 @@ async def register_state_history(
     db.commit()
     db.refresh(state_history_entry)
 
+
+
+async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.State:
+    # Obtener el vehículo de la base de datos
+    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="El vehículo no existe.")
+
+    # Obtener el estado actual del vehículo
+    state = db.query(_models.State).filter(_models.State.id == vehicle.status_id).first()
+    if not state:
+        raise HTTPException(status_code=500, detail="El estado del vehículo no está configurado.")
+
+    return _schemas.State.from_orm(state)
+
+
+
+
+
 # endregion
 

@@ -12,7 +12,6 @@ from dependencies import get_current_user
 from pyzbar.pyzbar import decode
 from PIL import Image
 from models import User
-
 import fastapi as _fastapi
 import sqlalchemy.orm as _orm
 import models as _models
@@ -43,7 +42,6 @@ app.add_middleware(
 
 # region Endpoints para Usuarios y Login *********************************************************************************************
 
-# Crear un nuevo usuario
 @app.post("/users/", response_model=UserRead)
 async def create_user(
     user: UserCreate, 
@@ -59,7 +57,6 @@ async def create_user(
     db.refresh(new_user)
     return new_user
 
-# Endpoint para autenticación y obtención del token
 @app.post("/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), 
@@ -77,7 +74,6 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
 
 @app.post("/logout")
 async def logout(
@@ -98,6 +94,7 @@ async def logout(
 # endregion
 
 # region Endpoints para Vehicle Types *********************************************************************************************
+
 @app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
 async def create_vehicle_type(
     vehicle_type: _schemas.VehicleTypeCreate,
@@ -178,7 +175,7 @@ async def update_vehicle_type(
     )
 # endregion
 
-# region Endpoints para Vehicle Types *********************************************************************************************
+# region Endpoints para Vehicle Brands *********************************************************************************************
 
 @app.post("/api/brands/", response_model=_schemas.Brand)
 async def create_brand(
@@ -244,7 +241,7 @@ async def update_brand(
     )
 # endregion
 
-# region Endpoints para Vehicule Model *********************************************************************************************
+# region Endpoints para Vehicle Model *********************************************************************************************
 
 @app.post("/api/models", response_model=_schemas.Model)
 async def create_model(
@@ -394,6 +391,7 @@ def delete_vehicle(
 # endregion
 
 
+
 # region Endpoint para recibir imagenes qr y barcode
 
 # Verificar los tipos de imagen permitidos
@@ -443,8 +441,29 @@ async def scan_qr_barcode(
 
 # endregion
 
+
 # region Endpoint para la gestión de estados permitidos
 
+## Consultar Transiciones Permitidas
+## Cambiar Estado del Vehículo
+## Obtener Histórico de Estados
+## Obtener Todos los Estados
+## Consultar Estado Actual del Vehículo
+
+
+# Endpoint para consultar el estado actual del vehículo
+@app.get("/api/vehicles/{vehicle_id}/current_state", response_model=_schemas.State)
+async def get_vehicle_current_state(
+    vehicle_id: int,
+    db: Session = Depends(get_db),
+    current_user: _models.User = Depends(get_current_user),
+):
+    try:
+        return await _services.get_vehicle_current_state(db=db, vehicle_id=vehicle_id)
+    except HTTPException as e:
+        raise e
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ocurrió un error al obtener el estado del vehículo.")
 
 
 # endregion
