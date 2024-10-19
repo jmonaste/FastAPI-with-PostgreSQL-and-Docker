@@ -291,6 +291,10 @@ async def register_state_history(
     db.refresh(state_history_entry)
 
 
+async def get_all_states(db: Session) -> List[_schemas.State]:
+    states = db.query(_models.State).all()
+    return [ _schemas.State.from_orm(state) for state in states ]
+
 
 async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.State:
     # Obtener el vehículo de la base de datos

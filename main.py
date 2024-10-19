@@ -450,6 +450,18 @@ async def scan_qr_barcode(
 ## Obtener Todos los Estados
 ## Consultar Estado Actual del Vehículo
 
+@app.get("/api/states/", response_model=List[_schemas.State])
+async def get_all_states(
+    db: Session = Depends(get_db),
+    current_user: _models.User = Depends(get_current_user),
+):
+    try:
+        return await _services.get_all_states(db=db)
+    except HTTPException as e:
+        raise e
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ocurrió un error al obtener los estados.")
+
 
 # Endpoint para consultar el estado actual del vehículo
 @app.get("/api/vehicles/{vehicle_id}/current_state", response_model=_schemas.State)
