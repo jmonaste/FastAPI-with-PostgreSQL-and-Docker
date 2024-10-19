@@ -18,7 +18,10 @@ import models as _models
 import schemas as _schemas
 import services as _services
 import io
+import datetime as _dt
 import imghdr
+from typing import Optional
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -445,7 +448,7 @@ async def scan_qr_barcode(
 # region Endpoint para la gestión de estados permitidos
 
 ## Consultar Transiciones Permitidas --> OK
-## Cambiar Estado del Vehículo
+## Cambiar Estado del Vehículo 
 ## Obtener Histórico de Estados --> OK
 ## Obtener Todos los Estados --> OK
 ## Consultar Estado Actual del Vehículo --> OK
@@ -504,6 +507,34 @@ async def get_vehicle_current_state(
         raise e
     except Exception:
         raise HTTPException(status_code=500, detail="Ocurrió un error al obtener el estado del vehículo.")
+
+@app.post("/api/vehicles/{vehicle_id}/change_state", response_model=_schemas.StateHistory)
+async def change_vehicle_state(
+    vehicle_id: int,
+    new_state_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    comments: Optional[str] = None
+):
+    try:
+        state_history_entry = await _services.change_vehicle_state(
+            vehicle_id=vehicle_id,
+            new_state_id=new_state_id,
+            user_id=current_user.id,
+            db=db,
+            comments=comments
+        )
+        return state_history_entry
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al cambiar el estado del vehículo."
+        )
 
 
 # endregion

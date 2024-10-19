@@ -7,7 +7,8 @@ import schemas as _schemas
 from fastapi import HTTPException, status
 from datetime import datetime
 from sqlalchemy.orm import joinedload
-
+import datetime as _dt
+from typing import Optional
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -337,6 +338,52 @@ async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.St
     return _schemas.State.from_orm(state)
 
 
+async def change_vehicle_state(
+    vehicle_id: int,
+    new_state_id: int,
+    user_id: int,
+    db: Session,
+    comments: Optional[str] = None
+) -> _schemas.StateHistory:
+    # Obtener el vehículo
+    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise ValueError("El vehículo no existe.")
+
+    # Obtener el nuevo estado
+    new_state = db.query(_models.State).filter(_models.State.id == new_state_id).first()
+    if not new_state:
+        raise ValueError("El nuevo estado no existe.")
+
+    # Verificar si la transición es válida
+    valid_transition = db.query(_models.Transition).filter(
+        _models.Transition.from_state_id == vehicle.status_id,
+        _models.Transition.to_state_id == new_state_id
+    ).first()
+
+    if not valid_transition:
+        raise ValueError("La transición al nuevo estado no es válida.")
+
+    # Actualizar el estado del vehículo
+    vehicle.status_id = new_state_id
+    vehicle.updated_at = _dt.datetime.utcnow()
+    db.commit()
+    db.refresh(vehicle)
+
+    # Crear una nueva entrada en el historial de estados
+    state_history_entry = _models.StateHistory(
+        vehicle_id=vehicle_id,
+        from_state_id=valid_transition.from_state_id,
+        to_state_id=valid_transition.to_state_id,
+        user_id=user_id,
+        timestamp=_dt.datetime.utcnow(),
+        comments=comments
+    )
+    db.add(state_history_entry)
+    db.commit()
+    db.refresh(state_history_entry)
+
+    return _schemas.StateHistory.from_orm(state_history_entry)
 
 
 
