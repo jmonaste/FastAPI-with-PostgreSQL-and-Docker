@@ -446,7 +446,7 @@ async def scan_qr_barcode(
 
 ## Consultar Transiciones Permitidas --> OK
 ## Cambiar Estado del Vehículo
-## Obtener Histórico de Estados
+## Obtener Histórico de Estados --> OK
 ## Obtener Todos los Estados --> OK
 ## Consultar Estado Actual del Vehículo --> OK
 
@@ -475,6 +475,20 @@ async def get_all_states(
         raise e
     except Exception:
         raise HTTPException(status_code=500, detail="Ocurrió un error al obtener los estados.")
+
+@app.get("/api/vehicles/{vehicle_id}/state_history", response_model=List[_schemas.StateHistory])
+async def get_vehicle_state_history(
+    vehicle_id: int,
+    db: Session = Depends(get_db),
+    current_user: _models.User = Depends(get_current_user),
+):
+    try:
+        state_history = await _services.get_vehicle_state_history(vehicle_id=vehicle_id, db=db)
+        return state_history
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al obtener el historial de estados del vehículo.")
 
 
 # Endpoint para consultar el estado actual del vehículo

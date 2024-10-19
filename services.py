@@ -309,6 +309,19 @@ async def get_all_states(db: Session) -> List[_schemas.State]:
     states = db.query(_models.State).all()
     return [ _schemas.State.from_orm(state) for state in states ]
 
+async def get_vehicle_state_history(vehicle_id: int, db: Session) -> List[_schemas.StateHistory]:
+    # Obtener el vehículo
+    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise ValueError("El vehículo no existe.")
+
+    # Obtener el historial de estados del vehículo
+    state_history = db.query(_models.StateHistory).filter(
+        _models.StateHistory.vehicle_id == vehicle_id
+    ).order_by(_models.StateHistory.timestamp).all()
+
+    return [_schemas.StateHistory.from_orm(entry) for entry in state_history]
+
 
 async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.State:
     # Obtener el vehículo de la base de datos
