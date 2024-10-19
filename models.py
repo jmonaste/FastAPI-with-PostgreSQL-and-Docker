@@ -20,8 +20,6 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-
-
 class Brand(_database.Base):
     __tablename__ = 'brands'
     id = _sql.Column(_sql.Integer, primary_key=True, index=True)
@@ -71,5 +69,50 @@ class Vehicle(_database.Base):
         if self.model and self.model.vehicle_type:
             return self.model.vehicle_type.type_name
         return None  # O alguna alternativa predeterminada
+    
+    status_id = _sql.Column(_sql.Integer, _sql.ForeignKey('states.id'), nullable=False)
+    status = relationship('State')
 
+class State(_database.Base):
+    __tablename__ = 'states'
 
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
+    code = _sql.Column(_sql.String(10), unique=True, nullable=False)
+    name = _sql.Column(_sql.String(100), nullable=False)
+    description = _sql.Column(_sql.String(255), nullable=False)
+    is_initial = _sql.Column(_sql.Boolean, default=False)
+    is_final = _sql.Column(_sql.Boolean, default=False)
+    order = _sql.Column(_sql.Integer)
+    active = _sql.Column(_sql.Boolean, default=True)
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(
+        _sql.DateTime,
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+    icon = _sql.Column(_sql.String(50))
+    color = _sql.Column(_sql.String(50))
+    category = _sql.Column(_sql.String(50))
+    comments = _sql.Column(_sql.Text)
+
+    transitions_from = relationship('Transition', back_populates='from_state', foreign_keys='Transition.from_state_id')
+    transitions_to = relationship('Transition', back_populates='to_state', foreign_keys='Transition.to_state_id')
+
+class Transition(_database.Base):
+    __tablename__ = 'transitions'
+
+    id = _sql.Column(_sql.Integer, primary_key=True, index=True)
+    from_state_id = _sql.Column(_sql.Integer, _sql.ForeignKey('states.id'), nullable=False)
+    to_state_id = _sql.Column(_sql.Integer, _sql.ForeignKey('states.id'), nullable=False)
+    condition = _sql.Column(_sql.String(255), nullable=True)
+    action = _sql.Column(_sql.String(255), nullable=True)
+    active = _sql.Column(_sql.Boolean, default=True)
+    created_at = _sql.Column(_sql.DateTime, server_default=func.now())
+    updated_at = _sql.Column(
+        _sql.DateTime,
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+    from_state = relationship('State', foreign_keys=[from_state_id], backref='transitions_from')
+    to_state = relationship('State', foreign_keys=[to_state_id], backref='transitions_to')

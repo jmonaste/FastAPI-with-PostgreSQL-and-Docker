@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 
 # region User definition
+
 from pydantic import BaseModel
 
 class UserBase(BaseModel):
