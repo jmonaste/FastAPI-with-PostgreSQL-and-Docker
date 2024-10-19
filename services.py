@@ -291,6 +291,20 @@ async def register_state_history(
     db.refresh(state_history_entry)
 
 
+async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> List[_schemas.Transition]:
+    # Obtener el vehículo
+    vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise ValueError("El vehículo no existe.")
+
+    # Obtener las transiciones permitidas desde el estado actual del vehículo
+    allowed_transitions = db.query(_models.Transition).filter(
+        _models.Transition.from_state_id == vehicle.status_id
+    ).all()
+
+    return [_schemas.Transition.from_orm(transition) for transition in allowed_transitions]
+
+
 async def get_all_states(db: Session) -> List[_schemas.State]:
     states = db.query(_models.State).all()
     return [ _schemas.State.from_orm(state) for state in states ]

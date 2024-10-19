@@ -444,11 +444,25 @@ async def scan_qr_barcode(
 
 # region Endpoint para la gestión de estados permitidos
 
-## Consultar Transiciones Permitidas
+## Consultar Transiciones Permitidas --> OK
 ## Cambiar Estado del Vehículo
 ## Obtener Histórico de Estados
-## Obtener Todos los Estados
-## Consultar Estado Actual del Vehículo
+## Obtener Todos los Estados --> OK
+## Consultar Estado Actual del Vehículo --> OK
+
+@app.get("/api/vehicles/{vehicle_id}/allowed_transitions", response_model=List[_schemas.Transition])
+async def get_allowed_transitions(
+    vehicle_id: int,
+    db: Session = Depends(get_db),
+    current_user: _models.User = Depends(get_current_user),
+):
+    try:
+        return await _services.get_allowed_transitions_for_vehicle(vehicle_id=vehicle_id, db=db)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error al obtener las transiciones permitidas.")
+
 
 @app.get("/api/states/", response_model=List[_schemas.State])
 async def get_all_states(
