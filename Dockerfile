@@ -1,12 +1,12 @@
-# Usa una imagen base de Python
-FROM python:3.11-slim
+# Usa una imagen base de Python más completa para mayor compatibilidad
+FROM python:3.11
 
-# Instala las dependencias del sistema para `zbar` y herramientas esenciales
+# Instala dependencias necesarias para compilar y otras herramientas esenciales
 RUN apt-get update && \
-    apt-get install -y zbar-tools libzbar0 build-essential && \
+    apt-get install -y wget build-essential libzbar0 zbar-tools libzbar-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Crea y establece el directorio de trabajo
+# Crea el directorio de trabajo
 WORKDIR /app
 
 # Copia los archivos necesarios al contenedor
@@ -16,8 +16,8 @@ COPY . /app
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Expón el puerto que usa la aplicación
+# Exponer el puerto usado por la API
 EXPOSE 8000
 
-# Comando de inicio
+# Ejecuta la aplicación
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
