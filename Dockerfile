@@ -1,6 +1,12 @@
 # Usa una imagen base oficial de Python
 FROM python:3.11-slim
 
+# Instala las dependencias del sistema necesarias para zbar
+RUN apt-get update && apt-get install -y \
+    zbar-tools \
+    libzbar0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Establece el directorio de trabajo
 WORKDIR /app
 
