@@ -1,31 +1,25 @@
-# Usa una imagen base oficial de Python
-FROM python:3.12
+# Usa una imagen de Python como base
+FROM python:3.11
 
-# Instala las dependencias del sistema necesarias para zbar
-# Instala las dependencias del sistema necesarias para zbar
-RUN apt-get update -y
-RUN apt-get install -y libzbar0
-RUN apt-get install -y python3-pip python3-dev build-essential
-
-# Establece el directorio de trabajo
+# Establece el directorio de trabajo en /app
 WORKDIR /app
 
-# Copia los archivos requirements.txt a la imagen y los instala
+# Copia el archivo requirements.txt a /app y lo instala
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt
 
-# Initially encountered an issue that indicated I had to set these ENVs
-ENV LC_ALL C.UTF-8
-ENV LANG C.UTF-8
+# Instala las dependencias de Python
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia el resto de los archivos de la aplicación al contenedor
+# Instala libzbar y otras dependencias necesarias para pyzbar
+RUN apt-get update && apt-get install -y \
+    libzbar0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia el código de la aplicación a /app
 COPY . .
 
-# Define la variable de entorno para que no genere archivos .pyc
-ENV PYTHONUNBUFFERED=1
-
-# Expone el puerto 8000 para la aplicación
+# Expone el puerto de la aplicación (Render asignará un puerto automáticamente)
 EXPOSE 8000
 
-# Comando para iniciar Gunicorn con Uvicorn como worker
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "main:app"]
+# Comando para ejecutar la aplicación
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000"]
