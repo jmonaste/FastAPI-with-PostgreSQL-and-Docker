@@ -33,6 +33,7 @@ app = _fastapi.FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 revoked_tokens = set() # Lista para almacenar tokens revocados
 
+#origins = ['http://localhost:3000','http://192.168.178.23:3000']
 
 app.add_middleware(
     CORSMiddleware,
@@ -180,7 +181,7 @@ async def update_vehicle_type(
 
 # region Endpoints para Vehicle Brands *********************************************************************************************
 
-@app.post("/api/brands/", response_model=_schemas.Brand)
+@app.post("/api/brands", response_model=_schemas.Brand)
 async def create_brand(
     brand: _schemas.BrandCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -195,14 +196,14 @@ async def create_brand(
     # Llamar a la función de servicio para crear la marca
     return await _services.create_brand(brand=brand, db=db)
 
-@app.get("/api/brands/", response_model=List[_schemas.Brand])
+@app.get("/api/brands", response_model=List[_schemas.Brand])
 async def get_brands(
     db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
     return await _services.get_all_brands(db=db)
 
-@app.get("/api/brands/{brand_id}/", response_model=_schemas.Brand)
+@app.get("/api/brands/{brand_id}", response_model=_schemas.Brand)
 async def get_brand(
     brand_id: int, 
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -214,7 +215,7 @@ async def get_brand(
 
     return brand
 
-@app.delete("/api/brands/{brand_id}/")
+@app.delete("/api/brands/{brand_id}")
 async def delete_brand(
     brand_id: int, 
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -228,7 +229,7 @@ async def delete_brand(
     
     return "Brand successfully deleted"
 
-@app.put("/api/brands/{brand_id}/", response_model=_schemas.Brand)
+@app.put("/api/brands/{brand_id}", response_model=_schemas.Brand)
 async def update_brand(
     brand_id: int,
     brand_data: _schemas.BrandCreate,
@@ -466,8 +467,7 @@ async def get_allowed_transitions(
     except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error al obtener las transiciones permitidas.")
 
-
-@app.get("/api/states/", response_model=List[_schemas.State])
+@app.get("/api/states", response_model=List[_schemas.State])
 async def get_all_states(
     db: Session = Depends(get_db),
     current_user: _models.User = Depends(get_current_user),
@@ -493,8 +493,6 @@ async def get_vehicle_state_history(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al obtener el historial de estados del vehículo.")
 
-
-# Endpoint para consultar el estado actual del vehículo
 @app.get("/api/vehicles/{vehicle_id}/current_state", response_model=_schemas.State)
 async def get_vehicle_current_state(
     vehicle_id: int,
@@ -536,6 +534,22 @@ async def change_vehicle_state(
             detail="Error al cambiar el estado del vehículo."
         )
 
+@app.get("/api/states/{state_id}/comments", response_model=List[_schemas.StateCommentRead])
+async def get_state_comments(
+    state_id: int,
+    db: Session = Depends(get_db),
+    current_user: _models.User = Depends(get_current_user),
+):
+    """
+    Obtiene los comentarios predefinidos para un estado específico.
+    """
+    try:
+        comments = await _services.get_state_comments(state_id=state_id, db=db)
+        return comments
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error al obtener los comentarios del estado.")
 
 # endregion
 

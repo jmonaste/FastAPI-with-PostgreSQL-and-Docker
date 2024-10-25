@@ -65,6 +65,7 @@ class State(Base):
 
     transitions_from = relationship('Transition', back_populates='from_state', foreign_keys='Transition.from_state_id')
     transitions_to = relationship('Transition', back_populates='to_state', foreign_keys='Transition.to_state_id')
+    state_comments = relationship('StateComment', back_populates='state', cascade="all, delete-orphan")
 
 class Transition(Base):
     __tablename__ = 'transitions'
@@ -115,3 +116,14 @@ class StateHistory(Base):
     from_state = relationship('State', foreign_keys=[from_state_id])
     to_state = relationship('State', foreign_keys=[to_state_id])
     user = relationship('User', back_populates='state_histories')
+
+class StateComment(Base):
+    __tablename__ = 'states_comments'
+
+    id = Column(Integer, primary_key=True, index=True)
+    state_id = Column(Integer, sa.ForeignKey('states.id'), nullable=False)
+    comment = Column(sa.Text, nullable=False)
+    created_at = Column(_sql.DateTime, server_default=func.now())
+    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+
+    state = relationship('State', back_populates='state_comments')

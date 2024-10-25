@@ -187,6 +187,27 @@ class StateHistory(StateHistoryBase):
 # endregion
 
 
+# region StateComment definition
+
+class StateCommentBase(_pydantic.BaseModel):
+    comment: str
+
+class StateCommentCreate(StateCommentBase):
+    state_id: int  # ID del estado al que pertenece el comentario
+
+class StateCommentRead(StateCommentBase):
+    id: int
+    state_id: int
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+
+    class Config:
+        from_attributes = True
+
+class StateCommentUpdate(StateCommentBase):
+    pass
+
+# endregion
 
 
 

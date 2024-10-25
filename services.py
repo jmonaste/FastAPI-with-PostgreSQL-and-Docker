@@ -291,7 +291,6 @@ async def register_state_history(
     db.commit()
     db.refresh(state_history_entry)
 
-
 async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> List[_schemas.Transition]:
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
@@ -304,7 +303,6 @@ async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> L
     ).all()
 
     return [_schemas.Transition.from_orm(transition) for transition in allowed_transitions]
-
 
 async def get_all_states(db: Session) -> List[_schemas.State]:
     states = db.query(_models.State).all()
@@ -323,7 +321,6 @@ async def get_vehicle_state_history(vehicle_id: int, db: Session) -> List[_schem
 
     return [_schemas.StateHistory.from_orm(entry) for entry in state_history]
 
-
 async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.State:
     # Obtener el vehículo de la base de datos
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
@@ -336,7 +333,6 @@ async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.St
         raise HTTPException(status_code=500, detail="El estado del vehículo no está configurado.")
 
     return _schemas.State.from_orm(state)
-
 
 async def change_vehicle_state(
     vehicle_id: int,
@@ -385,7 +381,19 @@ async def change_vehicle_state(
 
     return _schemas.StateHistory.from_orm(state_history_entry)
 
-
+async def get_state_comments(state_id: int, db: Session) -> List[_schemas.StateCommentRead]:
+    """
+    Obtiene los comentarios predefinidos para un estado específico.
+    """
+    # Verificar si el estado existe
+    state = db.query(_models.State).filter(_models.State.id == state_id).first()
+    if not state:
+        raise ValueError("Estado no encontrado.")
+    
+    # Obtener los comentarios asociados al estado
+    comments = db.query(_models.StateComment).filter(_models.StateComment.state_id == state_id).all()
+    
+    return [_schemas.StateCommentRead.from_orm(comment) for comment in comments]
 
 # endregion
 
