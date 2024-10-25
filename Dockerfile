@@ -5,13 +5,17 @@ FROM python:3.11
 WORKDIR /app
 
 # Instala libzbar y otras dependencias necesarias para pyzbar
-RUN sudo apt-get update && apt-get install libzbar0 -y && pip install pyzbar
+RUN sudo apt-get update -y
+RUN sudo apt-get install libzbar-dev -y
+RUN sudo apt-get install zbar -y
+RUN sudo apt-get install libzbar0 -y 
+
 
 # Copia el archivo requirements.txt a /app y lo instala
 COPY requirements.txt .
 
 # Instala las dependencias de Python
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
 
 
 
