@@ -16,6 +16,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY venv/Lib/site-packages/pyzbar/zbar_library.py /opt/render/project/src/.venv/lib/python3.11/site-packages/pyzbar/zbar_library.py
+
 # Copia el resto de los archivos de la aplicación al contenedor
 COPY . .
 
