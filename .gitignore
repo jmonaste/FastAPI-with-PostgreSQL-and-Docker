@@ -30,7 +30,6 @@ Thumbs.db
 docker-compose.yml
 docker-compose.override.yml
 *.env
-Dockerfile
 
 # Pytest
 .cache/

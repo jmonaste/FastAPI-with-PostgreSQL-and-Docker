@@ -416,11 +416,7 @@ async def scan_qr_barcode(
 
     # Manejo de imágenes HEIC
     if file.content_type == "image/heic":
-        if pyheif is None:
-            raise HTTPException(status_code=500, detail="HEIC format not supported. Install pyheif library.")
-        
-        heif_file = pyheif.read_heif(io.BytesIO(contents))
-        image = Image.frombytes(heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.stride)
+        raise HTTPException(status_code=500, detail="HEIC format not supported. Install pyheif library.")
     else:
         # Si no es HEIC, intentar abrir como imagen regular con PIL
         image = Image.open(io.BytesIO(contents))
