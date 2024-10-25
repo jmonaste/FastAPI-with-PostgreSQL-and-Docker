@@ -3,17 +3,20 @@ FROM python:3.12
 
 # Instala las dependencias del sistema necesarias para zbar
 # Instala las dependencias del sistema necesarias para zbar
-RUN sudo apt-get update && \
-    sudo apt-get install -y build-essential libzbar-dev && \
-    pip install zbar \
-    sudo apt-get install zbar-tools
+RUN apt-get update -y
+RUN apt-get install -y libzbar0
+RUN apt-get install -y python3-pip python3-dev build-essential
 
 # Establece el directorio de trabajo
 WORKDIR /app
 
 # Copia los archivos requirements.txt a la imagen y los instala
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install -r requirements.txt
+
+# Initially encountered an issue that indicated I had to set these ENVs
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
 
 # Copia el resto de los archivos de la aplicación al contenedor
 COPY . .
