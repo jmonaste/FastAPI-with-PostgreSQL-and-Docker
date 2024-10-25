@@ -3,9 +3,9 @@ FROM python:3.12
 
 # Instala las dependencias del sistema necesarias para zbar
 # Instala las dependencias del sistema necesarias para zbar
-RUN apt-get update && apt-get install -y \
-    zbar-tools \
-    libzbar0
+RUN apt-get update && \
+    apt-get install -y build-essential libzbar-dev && \
+    pip install zbar
 
 # Establece el directorio de trabajo
 WORKDIR /app
