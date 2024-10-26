@@ -36,3 +36,5 @@ COPY . .
 
 # Expon el puerto de la app
 EXPOSE 8000
+
+CMD ["gunicorn", "main:app"]
