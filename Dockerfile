@@ -1,5 +1,4 @@
-# Usa una imagen base de Python más completa para mayor compatibilidad
-FROM python:3.11
+FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -9,18 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libzbar0
 
-# Crea el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos necesarios al contenedor
-COPY . /app
+COPY requirements.txt ./
 
-# Instala dependencias de Python
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Exponer el puerto usado por la API
-EXPOSE 8000
+COPY . ./
 
-# Ejecuta la aplicación
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "main:app"]
