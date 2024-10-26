@@ -1,10 +1,13 @@
 # Usa una imagen base de Python más completa para mayor compatibilidad
 FROM python:3.11
 
-# Instala dependencias necesarias para compilar y otras herramientas esenciales
-RUN apt-get update && \
-    apt-get install -y wget build-essential libzbar0 zbar-tools libzbar-dev && \
-    rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libzbar0
 
 # Crea el directorio de trabajo
 WORKDIR /app
