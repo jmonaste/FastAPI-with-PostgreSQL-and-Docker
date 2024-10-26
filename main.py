@@ -1,3 +1,7 @@
+import os
+import pyzbar
+from pyzbar.pyzbar import decode
+from PIL import Image
 from typing import TYPE_CHECKING, List
 from fastapi import HTTPException, Depends, status, File, UploadFile
 from sqlalchemy.orm import Session
@@ -9,8 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
 from dependencies import get_current_user
-from pyzbar.pyzbar import decode
-from PIL import Image
 from models import User
 import fastapi as _fastapi
 import sqlalchemy.orm as _orm
