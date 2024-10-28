@@ -1,42 +1,39 @@
 # Usa una imagen base de Python
 FROM python:3.11-slim
 
-# Establece variables de entorno para Python
+# Configura variables de entorno
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Actualiza el sistema e instala las herramientas de compilación y dependencias necesarias para zbar
+# Instala dependencias del sistema para pyzbar y bibliotecas necesarias para zbar
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libjpeg-dev \
-    libtool \
-    autoconf \
-    pkg-config \
-    git \
-    make \
+    libzbar0 \
+    libzbar-dev \
+    libgl1 \
+    libxrender1 \
+    libfontconfig1 \
+    libsm6 \
+    libxext6 \
+    libice6 \
+    libgtk2.0-dev \
+    zbar-tools \
+    freeglut3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Clona e instala la biblioteca zbar desde el repositorio oficial
-RUN git clone https://github.com/mchehab/zbar.git /zbar
-WORKDIR /zbar
-RUN autoreconf -vfi && ./configure --with-python=auto --with-gtk=auto && make && make install
-
-# Actualiza el enlace dinámico
-RUN ldconfig
-
-# Configuración para la app
+# Crea el directorio de trabajo y copia el archivo de requerimientos
 WORKDIR /app
-COPY requirements.txt ./
+COPY requirements.txt .
 
 # Instala las dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia el código de la aplicación en el contenedor
+# Copia el código fuente al contenedor
 COPY . .
 
-# Expón el puerto de la app
+# Expone el puerto 8000 para FastAPI
 EXPOSE 8000
 
-# Comando para ejecutar la app usando gunicorn y el worker UvicornWorker
-CMD ["gunicorn", "main:app", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# Comando para ejecutar la aplicación FastAPI
+CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "main:app"]
