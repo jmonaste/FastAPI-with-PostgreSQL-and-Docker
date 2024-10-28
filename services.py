@@ -239,6 +239,28 @@ async def get_vehicles(db: "Session", skip: int = 0, limit: int = 10) -> List[_s
     # Convierte los objetos del modelo ORM a esquemas Pydantic
     return list(map(_schemas.Vehicle.from_orm, vehicles))
 
+
+# Get Vehicles Not in Final State with Pagination
+async def get_vehicles_not_in_final_state(db: "Session", skip: int = 0, limit: int = 30) -> List[_schemas.Vehicle]:
+    # Consulta con SQLAlchemy para obtener vehículos que no están en un estado final
+    vehicles = (
+        db.query(_models.Vehicle)
+        .join(_models.State, _models.Vehicle.status_id == _models.State.id)  # Join con la tabla de estados
+        .filter(_models.State.is_final == False)  # Filtrar por estados no finales
+        .options(
+            joinedload(_models.Vehicle.model).joinedload(_models.Model.vehicle_type)  # Cargar model y vehicle_type
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    # Convertir los objetos del modelo ORM a esquemas Pydantic
+    return list(map(_schemas.Vehicle.from_orm, vehicles))
+
+
+
+
 # Update Vehicle
 def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()

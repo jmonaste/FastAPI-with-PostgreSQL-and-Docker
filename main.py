@@ -1,6 +1,6 @@
 import os
-#import pyzbar
-#from pyzbar.pyzbar import decode
+import pyzbar
+from pyzbar.pyzbar import decode
 from PIL import Image
 from typing import TYPE_CHECKING, List
 from fastapi import HTTPException, Depends, status, File, UploadFile
@@ -371,6 +371,18 @@ async def get_vehicles(
     vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
     return vehicles
 
+@app.get("/api/filter/vehicles/in_progress", response_model=List[_schemas.Vehicle])
+async def get_vehicles_not_in_final_state(
+    skip: int = 0, 
+    limit: int = 30, 
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    vehicles = await _services.get_vehicles_not_in_final_state(db=db, skip=skip, limit=limit)
+    return vehicles
+
+
+
 @app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
 def update_vehicle(
     vehicle_id: int, 
@@ -400,48 +412,48 @@ def delete_vehicle(
 
 # region Endpoint para recibir imagenes qr y barcode
 
-## Verificar los tipos de imagen permitidos
-#allowed_extensions = {"image/jpeg", "image/jpg", "image/png", "image/heic"}
-#
-#@app.post("/scan")
-#async def scan_qr_barcode(
-#    file: UploadFile = File(...),
-#    current_user: User = Depends(get_current_user),  # Añadido para autenticación
-#):
-#    print(f"File content type: {file.content_type}")
-#    # Verificar el tipo de archivo
-#    if file.content_type not in allowed_extensions:
-#        raise HTTPException(status_code=400, detail="Unsupported file type")
-#    
-#    
-#    contents = await file.read()
-#
-#    # Manejo de imágenes HEIC
-#    if file.content_type == "image/heic":
-#        raise HTTPException(status_code=500, detail="HEIC format not supported. Install pyheif library.")
-#    else:
-#        # Si no es HEIC, intentar abrir como imagen regular con PIL
-#        image = Image.open(io.BytesIO(contents))
-#
-#    # Decodificar el código QR o de barras usando pyzbar
-#    decoded_objects = decode(image)
-#    
-#    if not decoded_objects:
-#        return JSONResponse(content={"error": "No QR or Barcode detected"}, status_code=400)
-#    
-#    # Procesar los códigos detectados
-#    result_data = []
-#    for obj in decoded_objects:
-#        code_type = "QR Code" if obj.type == "QRCODE" else "Barcode"
-#        result_data.append({
-#            "type": code_type,
-#            "data": obj.data.decode("utf-8")
-#        })
-#
-#    # Devolver la lista de códigos detectados junto con su tipo
-#    return {"detected_codes": result_data}
-#
-## endregion
+# Verificar los tipos de imagen permitidos
+allowed_extensions = {"image/jpeg", "image/jpg", "image/png", "image/heic"}
+
+@app.post("/scan")
+async def scan_qr_barcode(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),  # Añadido para autenticación
+):
+    print(f"File content type: {file.content_type}")
+    # Verificar el tipo de archivo
+    if file.content_type not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+    
+    
+    contents = await file.read()
+
+    # Manejo de imágenes HEIC
+    if file.content_type == "image/heic":
+        raise HTTPException(status_code=500, detail="HEIC format not supported. Install pyheif library.")
+    else:
+        # Si no es HEIC, intentar abrir como imagen regular con PIL
+        image = Image.open(io.BytesIO(contents))
+
+    # Decodificar el código QR o de barras usando pyzbar
+    decoded_objects = decode(image)
+    
+    if not decoded_objects:
+        return JSONResponse(content={"error": "No QR or Barcode detected"}, status_code=400)
+    
+    # Procesar los códigos detectados
+    result_data = []
+    for obj in decoded_objects:
+        code_type = "QR Code" if obj.type == "QRCODE" else "Barcode"
+        result_data.append({
+            "type": code_type,
+            "data": obj.data.decode("utf-8")
+        })
+
+    # Devolver la lista de códigos detectados junto con su tipo
+    return {"detected_codes": result_data}
+
+# endregion
 
 
 # region Endpoint para la gestión de estados permitidos
