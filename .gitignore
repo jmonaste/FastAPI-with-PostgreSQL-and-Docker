@@ -10,6 +10,9 @@ __pycache__/
 *.sqlite3
 *.db
 
+# Configurations
+.env
+
 # Virtual environments
 env/
 venv/
