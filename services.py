@@ -259,6 +259,22 @@ async def get_vehicles_not_in_final_state(db: "Session", skip: int = 0, limit: i
     return list(map(_schemas.Vehicle.from_orm, vehicles))
 
 
+async def get_vehicles_by_vin_in_progress(db: Session, vin: str, skip: int = 0, limit: int = 10) -> List[_schemas.Vehicle]:
+    # Consulta vehículos cuyo VIN contenga la cadena y no estén en un estado final
+    vehicles = (
+        db.query(_models.Vehicle)
+        .join(_models.State, _models.Vehicle.status_id == _models.State.id)
+        .filter(
+            _models.Vehicle.vin.ilike(f"%{vin}%"),  # Coincidencia parcial de VIN
+            _models.State.is_final == False  # Estado no final
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+    return list(map(_schemas.Vehicle.from_orm, vehicles))
+
 
 
 # Update Vehicle

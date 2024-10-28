@@ -381,6 +381,16 @@ async def get_vehicles_not_in_final_state(
     vehicles = await _services.get_vehicles_not_in_final_state(db=db, skip=skip, limit=limit)
     return vehicles
 
+@app.get("/api/filter/vehicles/in_progress/vin/{vin}", response_model=List[_schemas.Vehicle])
+async def get_vehicles_by_vin_in_progress(
+    vin: str,
+    skip: int = 0,
+    limit: int = 10,
+    db: Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    vehicles = await _services.get_vehicles_by_vin_in_progress(db=db, vin=vin, skip=skip, limit=limit)
+    return vehicles
 
 
 @app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
