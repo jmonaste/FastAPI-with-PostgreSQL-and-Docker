@@ -12,7 +12,6 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
-from dependencies import get_current_user
 from models import User
 import fastapi as _fastapi
 import sqlalchemy.orm as _orm
