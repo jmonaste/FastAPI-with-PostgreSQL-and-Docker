@@ -90,10 +90,12 @@ class Vehicle(Base):
     updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
     is_urgent = Column(_sql.Boolean, default=False)  # Por defecto no es urgente
     status_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=False)
+    color_id = Column(Integer, _sql.ForeignKey('colors.id'), nullable=True)
 
     status = relationship('State')
     state_history = relationship('StateHistory', back_populates='vehicle', cascade="all, delete-orphan")
     model = relationship('Model', back_populates='vehicles')
+    color = relationship("Color", back_populates="vehicles")
 
     # El tipo de vehículo se infiere del modelo
     @property
@@ -127,3 +129,16 @@ class StateComment(Base):
     updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     state = relationship('State', back_populates='state_comments')
+
+class Color(Base):
+    __tablename__ = 'colors'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    hex_code = Column(String(7), nullable=False)  # Ej: "#FF0000"
+    rgb_code = Column(String(20), nullable=True)  # Ej: "255,0,0"
+    created_at = Column(_sql.DateTime, server_default=func.now())
+    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relación inversa con Vehicle
+    vehicles = relationship("Vehicle", back_populates="color")

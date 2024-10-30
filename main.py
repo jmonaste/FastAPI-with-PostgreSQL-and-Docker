@@ -392,7 +392,6 @@ async def get_vehicles_by_vin_in_progress(
     vehicles = await _services.get_vehicles_by_vin_in_progress(db=db, vin=vin, skip=skip, limit=limit)
     return vehicles
 
-
 @app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
 def update_vehicle(
     vehicle_id: int, 
@@ -417,8 +416,6 @@ def delete_vehicle(
     return {"ok": True}
 
 # endregion
-
-
 
 # region Endpoint para recibir imagenes qr y barcode
 
@@ -464,7 +461,6 @@ async def scan_qr_barcode(
     return {"detected_codes": result_data}
 
 # endregion
-
 
 # region Endpoint para la gestión de estados permitidos
 
@@ -573,6 +569,85 @@ async def get_state_comments(
 
 # endregion
 
+# region Endpoints para Color *****************************************************************************************************
+
+@app.post("/api/colors", response_model=_schemas.Color)
+async def create_color(
+    color: _schemas.ColorCreate,
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await _services.add_color(color=color, db=db)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while creating the color."
+        )
+
+@app.get("/api/colors/{color_id}", response_model=_schemas.Color)
+def read_color(
+    color_id: int,
+    db: _orm.Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    color = _services.get_color(db=db, color_id=color_id)
+    if color is None:
+        raise HTTPException(status_code=404, detail="Color not found")
+    return color
+
+@app.put("/api/colors/{color_id}", response_model=_schemas.Color)
+def modify_color(
+    color_id: int,
+    color: _schemas.ColorCreate,
+    db: _orm.Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        updated_color = _services.update_color(db=db, color_id=color_id, color_data=color)
+        return updated_color
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while updating the color."
+        )
+
+@app.delete("/api/colors/{color_id}")
+def remove_color(
+    color_id: int,
+    db: _orm.Session = Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        success = _services.delete_color(db=db, color_id=color_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Color not found")
+        return {"ok": True}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while deleting the color."
+        )
+
+@app.get("/api/colors", response_model=List[_schemas.Color])
+async def get_all_colors(
+    db: _orm.Session = _fastapi.Depends(_services.get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        colors = await _services.get_all_colors(db=db)
+        return colors
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while fetching colors."
+        )
+
+# endregion
 
 
 

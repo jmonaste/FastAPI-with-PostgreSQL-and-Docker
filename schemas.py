@@ -84,6 +84,7 @@ class VehicleType(VehicleTypeBase):
 class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
     vin: str
+    color_id: int
     is_urgent: bool
     
     class Config:
@@ -103,8 +104,6 @@ class Vehicle(VehicleBase):
         from_attributes = True
 
 # endregion
-
-
 
 # region State definition
 
@@ -186,7 +185,6 @@ class StateHistory(StateHistoryBase):
         
 # endregion
 
-
 # region StateComment definition
 
 class StateCommentBase(_pydantic.BaseModel):
@@ -209,6 +207,24 @@ class StateCommentUpdate(StateCommentBase):
 
 # endregion
 
+# region Color definition
 
+class ColorBase(BaseModel):
+    name: str
+    hex_code: str
+    rgb_code: Optional[str] = None
+
+class ColorCreate(ColorBase):
+    pass
+
+class Color(ColorBase):
+    id: int
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+
+    class Config:
+        from_attributes = True
+
+# endregion
 
 
