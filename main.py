@@ -29,15 +29,18 @@ from sqlalchemy.exc import IntegrityError
 from database import engine, Base
 from utils import authenticate_user, create_access_token, create_refresh_token,get_current_user, get_db
 from schemas import Token, TokenRefresh
-from routers import vehicle_types, brands
+from routers import vehicle_models, vehicle_types, brands, vehicles
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 app = FastAPI()
+
 app.include_router(vehicle_types.router)
 app.include_router(brands.router)
+app.include_router(vehicle_models.router)
+app.include_router(vehicles.router)
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -59,11 +62,11 @@ app.add_middleware(
 # Ruta para crear un nuevo usuario (registro)
 @app.post("/register", response_model=schemas.UserOut, tags=["Authorization"])
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    db_user = db.query(vehicle_models.User).filter(vehicle_models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     hashed_password = get_password_hash(user.password)
-    new_user = models.User(username=user.username, hashed_password=hashed_password)
+    new_user = vehicle_models.User(username=user.username, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -85,7 +88,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     refresh_token = create_refresh_token(data={"sub": user.username, "jti": str(uuid.uuid4())})  # Añadir jti para identificar el token
 
     # Almacenar el Refresh Token en la base de datos
-    new_refresh_token = models.RefreshToken(
+    new_refresh_token = vehicle_models.RefreshToken(
         token=refresh_token,
         user_id=user.id,
         expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -116,15 +119,15 @@ def refresh_token(token_refresh: schemas.TokenRefresh, db: Session = Depends(get
         raise credentials_exception
 
     # Obtener el usuario desde la base de datos
-    user = db.query(models.User).filter(models.User.username == username).first()
+    user = db.query(vehicle_models.User).filter(vehicle_models.User.username == username).first()
     if user is None:
         raise credentials_exception
 
     # Verificar si el Refresh Token está en la base de datos y no está revocado
-    stored_refresh_token = db.query(models.RefreshToken).filter(
-        models.RefreshToken.token == token_refresh.refresh_token,
-        models.RefreshToken.is_revoked == False,
-        models.RefreshToken.expires_at > datetime.utcnow()
+    stored_refresh_token = db.query(vehicle_models.RefreshToken).filter(
+        vehicle_models.RefreshToken.token == token_refresh.refresh_token,
+        vehicle_models.RefreshToken.is_revoked == False,
+        vehicle_models.RefreshToken.expires_at > datetime.utcnow()
     ).first()
     if stored_refresh_token is None:
         raise credentials_exception
@@ -135,7 +138,7 @@ def refresh_token(token_refresh: schemas.TokenRefresh, db: Session = Depends(get
 
     # Crear un nuevo Refresh Token
     new_refresh_token_str = create_refresh_token(data={"sub": user.username, "jti": str(uuid.uuid4())})
-    new_refresh_token = models.RefreshToken(
+    new_refresh_token = vehicle_models.RefreshToken(
         token=new_refresh_token_str,
         user_id=user.id,
         expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -173,15 +176,15 @@ def logout(token_refresh: schemas.TokenRefresh, db: Session = Depends(get_db)):
         raise credentials_exception
 
     # Obtener el usuario desde la base de datos
-    user = db.query(models.User).filter(models.User.username == username).first()
+    user = db.query(vehicle_models.User).filter(vehicle_models.User.username == username).first()
     if user is None:
         raise credentials_exception
 
     # Buscar el Refresh Token en la base de datos
-    stored_refresh_token = db.query(models.RefreshToken).filter(
-        models.RefreshToken.token == token_refresh.refresh_token,
-        models.RefreshToken.is_revoked == False,
-        models.RefreshToken.expires_at > datetime.utcnow()
+    stored_refresh_token = db.query(vehicle_models.RefreshToken).filter(
+        vehicle_models.RefreshToken.token == token_refresh.refresh_token,
+        vehicle_models.RefreshToken.is_revoked == False,
+        vehicle_models.RefreshToken.expires_at > datetime.utcnow()
     ).first()
 
     if stored_refresh_token is None:
@@ -202,144 +205,9 @@ def logout(token_refresh: schemas.TokenRefresh, db: Session = Depends(get_db)):
 
 
 
-# region Endpoints para VehicleModel *********************************************************************************************
-
-@app.post("/api/models", response_model=_schemas.Model, tags=["Models"])
-async def create_model(
-    model: _schemas.ModelCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    # Comprobar si el modelo ya existe
-    existing_model = db.query(_models.Model).filter(
-        _models.Model.name == model.name, 
-        _models.Model.brand_id == model.brand_id
-    ).first()
-    
-    if existing_model:
-        raise HTTPException(status_code=409, detail="Model already exists for this brand")
-
-    # Llamar a la función de servicio para crear el modelo
-    return await _services.create_model(model=model, db=db)
-
-@app.get("/api/models", response_model=List[_schemas.Model], tags=["Models"])
-async def get_models(
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),                 
-):
-    return await _services.get_all_models(db=db)
-
-@app.get("/api/models/{model_id}", response_model=_schemas.Model, tags=["Models"])
-async def get_model(
-    model_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    model = await _services.get_model(db=db, model_id=model_id)
-    if model is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Model does not exist")
-
-    return model
-
-@app.delete("/api/models/{model_id}", tags=["Models"])
-async def delete_model(
-    model_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    model = await _services.get_model(db=db, model_id=model_id)
-    if model is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Model does not exist")
-
-    await _services.delete_model(model_id, db=db)
-    
-    return {"detail": "Model successfully deleted"}
-
-@app.put("/api/models/{model_id}", response_model=_schemas.Model, tags=["Models"])
-async def update_model(
-    model_id: int, 
-    model: _schemas.ModelCreate, 
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    try:
-        updated_model = await _services.update_model(model_id, model, db)
-        return updated_model
-    except HTTPException as e:
-        raise e
-
-# endregion
-
-# region Endpoints para Vehicle ***************************************************************************************************
-
-@app.post("/api/vehicles", response_model=_schemas.Vehicle, tags=["Vehicles"])
-async def create_vehicle(
-    vehicle: _schemas.VehicleCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    # Verificar si el modelo de vehículo existe
-    existing_model = db.query(models.Model).filter(models.Model.id == vehicle.vehicle_model_id).first()
-    if not existing_model:
-        raise HTTPException(status_code=404, detail="Vehicle model not found.")
-
-    try:
-        # Crear el vehículo
-        new_vehicle = await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
-        return new_vehicle
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
-    
-
-@app.get("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle, tags=["Vehicles"])
-async def read_vehicle(
-    vehicle_id: int, 
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    db_vehicle = await _services.get_vehicle(db, vehicle_id=vehicle_id)
-    if db_vehicle is None:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
-
-@app.get("/api/vehicles", response_model=List[_schemas.Vehicle], tags=["Vehicles"])
-async def get_vehicles(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1),
-    in_progress: bool = None,
-    vin: str = None,
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
-    return vehicles
-
-@app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle, tags=["Vehicles"])
-async def update_vehicle(
-    vehicle_id: int, 
-    vehicle: _schemas.VehicleCreate, 
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    db_vehicle = await _services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
-    if db_vehicle is None:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
-
-@app.delete("/api/vehicles/{vehicle_id}", tags=["Vehicles"])
-async def delete_vehicle(
-    vehicle_id: int, 
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    success = await _services.delete_vehicle(db=db, vehicle_id=vehicle_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return {"detail": "Vehicle successfully deleted"}
 
 
-# endregion
+
 
 # region Endpoints para recibir imagenes qr y barcode
 
