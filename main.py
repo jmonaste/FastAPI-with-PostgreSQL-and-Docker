@@ -3,10 +3,10 @@ import pyzbar
 from pyzbar.pyzbar import decode
 from PIL import Image
 from typing import TYPE_CHECKING, List
-from fastapi import HTTPException, Depends, status, File, UploadFile
+from fastapi import HTTPException, Depends, status, File, UploadFile, FastAPI, Query
 from sqlalchemy.orm import Session
 from schemas import UserCreate, UserRead
-from utils import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from utils import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from dependencies import get_db, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,18 +18,27 @@ import sqlalchemy.orm as _orm
 import models as _models
 import schemas as _schemas
 import services as _services
+import uuid
 import io
 import datetime as _dt
 import imghdr
+from jose import JWTError, jwt
 from typing import Optional
+import models, schemas
+from sqlalchemy.exc import IntegrityError
+from database import engine, Base
+from utils import authenticate_user, create_access_token, create_refresh_token,get_current_user, get_db
+from schemas import Token, TokenRefresh
+from routers import vehicle_types, brands
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+app = FastAPI()
+app.include_router(vehicle_types.router)
+app.include_router(brands.router)
 
-
-app = _fastapi.FastAPI()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 revoked_tokens = set() # Lista para almacenar tokens revocados
@@ -47,208 +56,155 @@ app.add_middleware(
 
 # region Endpoints para Usuarios y Login *********************************************************************************************
 
-@app.post("/users/", response_model=UserRead)
-async def create_user(
-    user: UserCreate, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db)
-):
-    db_user = db.query(User).filter(User.username == user.username).first()
+# Ruta para crear un nuevo usuario (registro)
+@app.post("/register", response_model=schemas.UserOut, tags=["Authorization"])
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
+        raise HTTPException(status_code=400, detail="Username already registered")
     hashed_password = get_password_hash(user.password)
-    new_user = User(username=user.username, hashed_password=hashed_password)
+    new_user = models.User(username=user.username, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-@app.post("/token")
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(), 
-    db: _orm.Session = _fastapi.Depends(_services.get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
-
-    if not user or not verify_password(form_data.password, user.hashed_password):
+@app.post("/login", response_model=schemas.Token, tags=["Authorization"])
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    Endpoint de login que devuelve Access y Refresh Tokens.
+    """
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nombre de usuario o contraseña incorrectos",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.username})
+    refresh_token = create_refresh_token(data={"sub": user.username, "jti": str(uuid.uuid4())})  # Añadir jti para identificar el token
 
-@app.post("/logout")
-async def logout(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    token: str = Depends(oauth2_scheme),
-):
-    if token in revoked_tokens:
+    # Almacenar el Refresh Token en la base de datos
+    new_refresh_token = models.RefreshToken(
+        token=refresh_token,
+        user_id=user.id,
+        expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    db.add(new_refresh_token)
+    db.commit()
+
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+@app.post("/refresh", response_model=schemas.Token, tags=["Authorization"])
+def refresh_token(token_refresh: schemas.TokenRefresh, db: Session = Depends(get_db)):
+    """
+    Endpoint para renovar el Access Token utilizando un Refresh Token válido.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # Decodificar el Refresh Token
+        payload = jwt.decode(token_refresh.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        jti: str = payload.get("jti")  # JWT ID
+        if username is None or jti is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # Obtener el usuario desde la base de datos
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise credentials_exception
+
+    # Verificar si el Refresh Token está en la base de datos y no está revocado
+    stored_refresh_token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == token_refresh.refresh_token,
+        models.RefreshToken.is_revoked == False,
+        models.RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+    if stored_refresh_token is None:
+        raise credentials_exception
+
+    # Revocar el Refresh Token actual
+    stored_refresh_token.is_revoked = True
+    db.commit()
+
+    # Crear un nuevo Refresh Token
+    new_refresh_token_str = create_refresh_token(data={"sub": user.username, "jti": str(uuid.uuid4())})
+    new_refresh_token = models.RefreshToken(
+        token=new_refresh_token_str,
+        user_id=user.id,
+        expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    db.add(new_refresh_token)
+    db.commit()
+
+    # Crear un nuevo Access Token
+    access_token = create_access_token(data={"sub": user.username})
+
+    return {"access_token": access_token, "refresh_token": new_refresh_token_str, "token_type": "bearer"}
+
+# Ruta protegida de ejemplo
+@app.get("/protected", response_model=schemas.UserOut, tags=["Authorization"])
+def read_protected(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+@app.post("/logout", status_code=200, tags=["Authorization"])
+def logout(token_refresh: schemas.TokenRefresh, db: Session = Depends(get_db)):
+    """
+    Endpoint para cerrar sesión revocando el Refresh Token proporcionado.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # Decodificar el Refresh Token
+        payload = jwt.decode(token_refresh.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # Obtener el usuario desde la base de datos
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise credentials_exception
+
+    # Buscar el Refresh Token en la base de datos
+    stored_refresh_token = db.query(models.RefreshToken).filter(
+        models.RefreshToken.token == token_refresh.refresh_token,
+        models.RefreshToken.is_revoked == False,
+        models.RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+
+    if stored_refresh_token is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El token ya ha sido revocado."
+            detail="Refresh token not found or already revoked",
         )
-    
-    # Revocar el token actual
-    revoked_tokens.add(token)
-    return {"message": "Sesión cerrada correctamente. Token revocado."}
+
+    # Revocar el Refresh Token
+    stored_refresh_token.is_revoked = True
+    db.commit()
+
+    return {"message": "Logged out successfully"}
 
 # endregion
 
-# region Endpoints para Vehicle Types *********************************************************************************************
 
-@app.post("/api/vehicle-types/", response_model=_schemas.VehicleType)
-async def create_vehicle_type(
-    vehicle_type: _schemas.VehicleTypeCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),  # Añadido para autenticación
-):
-    # Comprobar si el tipo de vehículo ya existe
-    existing_type = db.query(_models.VehicleType).filter(_models.VehicleType.type_name == vehicle_type.type_name).first()
-    
-    if existing_type:
-        raise HTTPException(status_code=409, detail="El tipo de vehículo ya existe")
 
-    # Llamar a la función de servicio para crear el tipo de vehículo
-    return await _services.create_vehicle_type(vehicle_type=vehicle_type, db=db)
 
-@app.get("/api/vehicle-types/", response_model=List[_schemas.VehicleType])
-async def get_vehicle_types(
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicle_types = await _services.get_all_vehicle_types(db=db)
-    
-    # Convertir los campos de datetime a cadenas
-    vehicle_types_serialized = [
-        {
-            "type_name": vt.type_name,
-            "id": vt.id,
-            "created_at": vt.created_at.isoformat() if isinstance(vt.created_at, datetime) else vt.created_at,
-            "updated_at": vt.updated_at.isoformat() if isinstance(vt.updated_at, datetime) else vt.updated_at,
-        }
-        for vt in vehicle_types
-    ]
-    
-    return JSONResponse(
-        content=vehicle_types_serialized,
-        headers={"Content-Type": "application/json; charset=utf-8"}
-    )
 
-@app.get("/api/vehicle-types/{vehicle_type_id}/", response_model=_schemas.VehicleType)
-async def get_vehicle_type(
-    vehicle_type_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
-    if vehicle_type is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Vehicle Type does not exist")
+# region Endpoints para VehicleModel *********************************************************************************************
 
-    return vehicle_type
-
-@app.delete("/api/vehicle-types/{vehicle_type_id}/")
-async def delete_vehicle_type(
-    vehicle_type_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
-    if vehicle_type is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Vehicle Type does not exist")
-
-    await _services.delete_vehicle_type(vehicle_type_id, db=db)
-    
-    return "Vehicle type successfully deleted"
-
-@app.put("/api/vehicle-types/{vehicle_type_id}/", response_model=_schemas.VehicleType)
-async def update_vehicle_type(
-    vehicle_type_id: int,
-    vehicle_type_data: _schemas.VehicleTypeCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicle_type = await _services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
-    if vehicle_type is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Vehicle Type does not exist")
-
-    return await _services.update_vehicle_type(
-        vehicle_type_data=vehicle_type_data, vehicle_type_id=vehicle_type_id, db=db
-    )
-# endregion
-
-# region Endpoints para Vehicle Brands *********************************************************************************************
-
-@app.post("/api/brands", response_model=_schemas.Brand)
-async def create_brand(
-    brand: _schemas.BrandCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    # Comprobar si la marca ya existe
-    existing_brand = db.query(_models.Brand).filter(_models.Brand.name == brand.name).first()
-    
-    if existing_brand:
-        raise HTTPException(status_code=409, detail="Brand already exists")
-
-    # Llamar a la función de servicio para crear la marca
-    return await _services.create_brand(brand=brand, db=db)
-
-@app.get("/api/brands", response_model=List[_schemas.Brand])
-async def get_brands(
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return await _services.get_all_brands(db=db)
-
-@app.get("/api/brands/{brand_id}", response_model=_schemas.Brand)
-async def get_brand(
-    brand_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    brand = await _services.get_brand(db=db, brand_id=brand_id)
-    if brand is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Brand does not exist")
-
-    return brand
-
-@app.delete("/api/brands/{brand_id}")
-async def delete_brand(
-    brand_id: int, 
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    brand = await _services.get_brand(db=db, brand_id=brand_id)
-    if brand is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Brand does not exist")
-
-    await _services.delete_brand(brand_id, db=db)
-    
-    return "Brand successfully deleted"
-
-@app.put("/api/brands/{brand_id}", response_model=_schemas.Brand)
-async def update_brand(
-    brand_id: int,
-    brand_data: _schemas.BrandCreate,
-    db: _orm.Session = _fastapi.Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    brand = await _services.get_brand(db=db, brand_id=brand_id)
-    if brand is None:
-        raise _fastapi.HTTPException(status_code=404, detail="Brand does not exist")
-
-    return await _services.update_brand(
-        brand_data=brand_data, brand_id=brand_id, db=db
-    )
-# endregion
-
-# region Endpoints para Vehicle Model *********************************************************************************************
-
-@app.post("/api/models", response_model=_schemas.Model)
+@app.post("/api/models", response_model=_schemas.Model, tags=["Models"])
 async def create_model(
     model: _schemas.ModelCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -266,14 +222,14 @@ async def create_model(
     # Llamar a la función de servicio para crear el modelo
     return await _services.create_model(model=model, db=db)
 
-@app.get("/api/models", response_model=List[_schemas.Model])
+@app.get("/api/models", response_model=List[_schemas.Model], tags=["Models"])
 async def get_models(
     db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),                 
 ):
     return await _services.get_all_models(db=db)
 
-@app.get("/api/models/{model_id}", response_model=_schemas.Model)
+@app.get("/api/models/{model_id}", response_model=_schemas.Model, tags=["Models"])
 async def get_model(
     model_id: int, 
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -285,7 +241,7 @@ async def get_model(
 
     return model
 
-@app.delete("/api/models/{model_id}")
+@app.delete("/api/models/{model_id}", tags=["Models"])
 async def delete_model(
     model_id: int, 
     db: _orm.Session = _fastapi.Depends(_services.get_db),
@@ -297,9 +253,9 @@ async def delete_model(
 
     await _services.delete_model(model_id, db=db)
     
-    return "Model successfully deleted"
+    return {"detail": "Model successfully deleted"}
 
-@app.put("/api/models/{model_id}", response_model=_schemas.Model)
+@app.put("/api/models/{model_id}", response_model=_schemas.Model, tags=["Models"])
 async def update_model(
     model_id: int, 
     model: _schemas.ModelCreate, 
@@ -316,112 +272,81 @@ async def update_model(
 
 # region Endpoints para Vehicle ***************************************************************************************************
 
-@app.post("/api/vehicles", response_model=_schemas.Vehicle)
+@app.post("/api/vehicles", response_model=_schemas.Vehicle, tags=["Vehicles"])
 async def create_vehicle(
     vehicle: _schemas.VehicleCreate,
     db: _orm.Session = _fastapi.Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-
-    try:
-        existing_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.vin == vehicle.vin).first()
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Cannot check if this VIN already exists."
-        )
-
-    if existing_vehicle:
-        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
-
-    # Verificar si el modelo de vehículo existe en la tabla models
-    existing_model = db.query(_models.Model).filter(_models.Model.id == vehicle.vehicle_model_id).first()
-
+    # Verificar si el modelo de vehículo existe
+    existing_model = db.query(models.Model).filter(models.Model.id == vehicle.vehicle_model_id).first()
     if not existing_model:
         raise HTTPException(status_code=404, detail="Vehicle model not found.")
 
     try:
-        # Crear el vehículo si todas las verificaciones son correctas
-        return await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error while creating the vehicle."
-        )
+        # Crear el vehículo
+        new_vehicle = await _services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
+        return new_vehicle
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
+    
 
-@app.get("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
-def read_vehicle(
+@app.get("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle, tags=["Vehicles"])
+async def read_vehicle(
     vehicle_id: int, 
     db: Session = Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    db_vehicle = _services.get_vehicle(db, vehicle_id=vehicle_id)
+    db_vehicle = await _services.get_vehicle(db, vehicle_id=vehicle_id)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
 
-@app.get("/api/vehicles", response_model=List[_schemas.Vehicle])
+@app.get("/api/vehicles", response_model=List[_schemas.Vehicle], tags=["Vehicles"])
 async def get_vehicles(
-    skip: int = 0, 
-    limit: int = 10, 
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1),
+    in_progress: bool = None,
+    vin: str = None,
     db: Session = Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit)
+    vehicles = await _services.get_vehicles(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
     return vehicles
 
-@app.get("/api/filter/vehicles/in_progress", response_model=List[_schemas.Vehicle])
-async def get_vehicles_not_in_final_state(
-    skip: int = 0, 
-    limit: int = 30, 
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicles = await _services.get_vehicles_not_in_final_state(db=db, skip=skip, limit=limit)
-    return vehicles
-
-@app.get("/api/filter/vehicles/in_progress/vin/{vin}", response_model=List[_schemas.Vehicle])
-async def get_vehicles_by_vin_in_progress(
-    vin: str,
-    skip: int = 0,
-    limit: int = 10,
-    db: Session = Depends(_services.get_db),
-    current_user: User = Depends(get_current_user),
-):
-    vehicles = await _services.get_vehicles_by_vin_in_progress(db=db, vin=vin, skip=skip, limit=limit)
-    return vehicles
-
-@app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle)
-def update_vehicle(
+@app.put("/api/vehicles/{vehicle_id}", response_model=_schemas.Vehicle, tags=["Vehicles"])
+async def update_vehicle(
     vehicle_id: int, 
     vehicle: _schemas.VehicleCreate, 
     db: Session = Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    db_vehicle = _services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
+    db_vehicle = await _services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
 
-@app.delete("/api/vehicles/{vehicle_id}")
-def delete_vehicle(
+@app.delete("/api/vehicles/{vehicle_id}", tags=["Vehicles"])
+async def delete_vehicle(
     vehicle_id: int, 
     db: Session = Depends(_services.get_db),
     current_user: User = Depends(get_current_user),
 ):
-    success = _services.delete_vehicle(db=db, vehicle_id=vehicle_id)
+    success = await _services.delete_vehicle(db=db, vehicle_id=vehicle_id)
     if not success:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-    return {"ok": True}
+    return {"detail": "Vehicle successfully deleted"}
+
 
 # endregion
 
-# region Endpoint para recibir imagenes qr y barcode
+# region Endpoints para recibir imagenes qr y barcode
 
 # Verificar los tipos de imagen permitidos
 allowed_extensions = {"image/jpeg", "image/jpg", "image/png", "image/heic"}
 
-@app.post("/scan")
+@app.post("/scan", tags=["QR & Barcodes"])
 async def scan_qr_barcode(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),  # Añadido para autenticación
@@ -461,28 +386,17 @@ async def scan_qr_barcode(
 
 # endregion
 
-# region Endpoint para la gestión de estados permitidos
+# region Endpoints para la gestión de estados permitidos
 
-## Consultar Transiciones Permitidas --> OK
-## Cambiar Estado del Vehículo 
-## Obtener Histórico de Estados --> OK
-## Obtener Todos los Estados --> OK
-## Consultar Estado Actual del Vehículo --> OK
-
-@app.get("/api/vehicles/{vehicle_id}/allowed_transitions", response_model=List[_schemas.Transition])
+@app.get("/api/vehicles/{vehicle_id}/allowed_transitions", response_model=List[_schemas.Transition], tags=["Vehicle States"])
 async def get_allowed_transitions(
     vehicle_id: int,
     db: Session = Depends(get_db),
     current_user: _models.User = Depends(get_current_user),
 ):
-    try:
-        return await _services.get_allowed_transitions_for_vehicle(vehicle_id=vehicle_id, db=db)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error al obtener las transiciones permitidas.")
+    return await _services.get_allowed_transitions_for_vehicle(vehicle_id=vehicle_id, db=db)
 
-@app.get("/api/states", response_model=List[_schemas.State])
+@app.get("/api/states", response_model=List[_schemas.State], tags=["Vehicle States"], summary="Obtener todos los estados", description="Devuelve una lista de todos los estados disponibles para los vehículos")
 async def get_all_states(
     db: Session = Depends(get_db),
     current_user: _models.User = Depends(get_current_user),
@@ -494,7 +408,7 @@ async def get_all_states(
     except Exception:
         raise HTTPException(status_code=500, detail="Ocurrió un error al obtener los estados.")
 
-@app.get("/api/vehicles/{vehicle_id}/state_history", response_model=List[_schemas.StateHistory])
+@app.get("/api/vehicles/{vehicle_id}/state_history", response_model=List[_schemas.StateHistory], tags=["Vehicle States"])
 async def get_vehicle_state_history(
     vehicle_id: int,
     db: Session = Depends(get_db),
@@ -508,7 +422,7 @@ async def get_vehicle_state_history(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al obtener el historial de estados del vehículo.")
 
-@app.get("/api/vehicles/{vehicle_id}/current_state", response_model=_schemas.State)
+@app.get("/api/vehicles/{vehicle_id}/state", response_model=_schemas.State, tags=["Vehicle States"])
 async def get_vehicle_current_state(
     vehicle_id: int,
     db: Session = Depends(get_db),
@@ -521,21 +435,20 @@ async def get_vehicle_current_state(
     except Exception:
         raise HTTPException(status_code=500, detail="Ocurrió un error al obtener el estado del vehículo.")
 
-@app.post("/api/vehicles/{vehicle_id}/change_state", response_model=_schemas.StateHistory)
+@app.put("/api/vehicles/{vehicle_id}/state", response_model=_schemas.StateHistory, tags=["Vehicle States"])
 async def change_vehicle_state(
     vehicle_id: int,
-    new_state_id: int,
+    state_change: _schemas.StateChangeRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    comments: Optional[str] = None
 ):
     try:
         state_history_entry = await _services.change_vehicle_state(
             vehicle_id=vehicle_id,
-            new_state_id=new_state_id,
-            user_id=current_user.id,
+            new_state_id=state_change.new_state_id,
+            user_id=get_current_user().id,
             db=db,
-            comments=comments
+            comments=state_change.comments,
         )
         return state_history_entry
     except ValueError as e:
@@ -543,13 +456,13 @@ async def change_vehicle_state(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al cambiar el estado del vehículo."
         )
 
-@app.get("/api/states/{state_id}/comments", response_model=List[_schemas.StateCommentRead])
+@app.get("/api/states/{state_id}/comments", response_model=List[_schemas.StateCommentRead], tags=["Vehicle States"])
 async def get_state_comments(
     state_id: int,
     db: Session = Depends(get_db),

@@ -38,8 +38,8 @@ async def create_brand(
     db.refresh(brand_model)
     return _schemas.Brand.from_orm(brand_model)
 
-async def get_all_brands(db: "Session") -> List[_schemas.Brand]:
-    brands = db.query(_models.Brand).all()
+async def get_all_brands(db: "Session", skip: int = 0, limit: int = 10) -> List[_schemas.Brand]:
+    brands = db.query(_models.Brand).offset(skip).limit(limit).all()
     return list(map(_schemas.Brand.from_orm, brands))
 
 async def get_brand(brand_id: int, db: "Session") -> _schemas.Brand:
@@ -142,9 +142,10 @@ async def create_vehicle_type(
     db.refresh(vehicle_type_model)
     return _schemas.VehicleType.from_orm(vehicle_type_model)
 
-async def get_all_vehicle_types(db: "Session") -> List[_schemas.VehicleType]:
-    vehicle_types = db.query(_models.VehicleType).all()
+async def get_all_vehicle_types(db: "Session", skip: int = 0, limit: int = 10) -> List[_schemas.VehicleType]:
+    vehicle_types = db.query(_models.VehicleType).offset(skip).limit(limit).all()
     return list(map(_schemas.VehicleType.from_orm, vehicle_types))
+
 
 async def get_vehicle_type(vehicle_type_id: int, db: "Session") -> _schemas.VehicleType:
     vehicle_type = db.query(_models.VehicleType).filter(_models.VehicleType.id == vehicle_type_id).first()
@@ -166,7 +167,6 @@ async def update_vehicle_type(
     vehicle_type = db.query(_models.VehicleType).filter(_models.VehicleType.id == vehicle_type_id).first()
     if vehicle_type:
         vehicle_type.type_name = vehicle_type_data.type_name
-
         db.commit()
         db.refresh(vehicle_type)
         return _schemas.VehicleType.from_orm(vehicle_type)
@@ -176,9 +176,6 @@ async def update_vehicle_type(
 
 # region Vehicle Functions
 
-
-
-# Create Vehicle
 async def create_vehicle(
     vehicle: _schemas.VehicleCreate, db: "Session", user_id: int
 ) -> _schemas.Vehicle:
@@ -219,78 +216,67 @@ async def create_vehicle(
 
     return _schemas.Vehicle.from_orm(vehicle_model)
 
-# Get Vehicle by ID
-def get_vehicle(db: "Session", vehicle_id: int):
+async def get_vehicle(db: "Session", vehicle_id: int):
     return db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
 
-# Get All Vehicles with Pagination
-async def get_vehicles(db: "Session", skip: int = 0, limit: int = 10) -> List[_schemas.Vehicle]:
-    # Consulta con SQLAlchemy cargando las relaciones con joinedload
-    vehicles = (
-        db.query(_models.Vehicle)
-        .options(
-            joinedload(_models.Vehicle.model).joinedload(_models.Model.vehicle_type)  # Cargamos model y vehicle_type
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+async def get_vehicles(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    in_progress: Optional[bool] = None,
+    vin: Optional[str] = None
+):
+    # Iniciamos la consulta con un join al modelo State
+    query = db.query(_models.Vehicle).join(_models.State, _models.Vehicle.status_id == _models.State.id)
     
-    # Convierte los objetos del modelo ORM a esquemas Pydantic
-    return list(map(_schemas.Vehicle.from_orm, vehicles))
-
-
-# Get Vehicles Not in Final State with Pagination
-async def get_vehicles_not_in_final_state(db: "Session", skip: int = 0, limit: int = 30) -> List[_schemas.Vehicle]:
-    # Consulta con SQLAlchemy para obtener vehículos que no están en un estado final
-    vehicles = (
-        db.query(_models.Vehicle)
-        .join(_models.State, _models.Vehicle.status_id == _models.State.id)  # Join con la tabla de estados
-        .filter(_models.State.is_final == False)  # Filtrar por estados no finales
-        .options(
-            joinedload(_models.Vehicle.model).joinedload(_models.Model.vehicle_type)  # Cargar model y vehicle_type
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-    # Convertir los objetos del modelo ORM a esquemas Pydantic
-    return list(map(_schemas.Vehicle.from_orm, vehicles))
-
-
-async def get_vehicles_by_vin_in_progress(db: Session, vin: str, skip: int = 0, limit: int = 10) -> List[_schemas.Vehicle]:
-    # Consulta vehículos cuyo VIN contenga la cadena y no estén en un estado final
-    vehicles = (
-        db.query(_models.Vehicle)
-        .join(_models.State, _models.Vehicle.status_id == _models.State.id)
-        .filter(
-            _models.Vehicle.vin.ilike(f"%{vin}%"),  # Coincidencia parcial de VIN
-            _models.State.is_final == False  # Estado no final
-        )
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    if in_progress is not None:
+        if in_progress:
+            # Filtrar vehículos que NO están en un estado final (is_final == False)
+            query = query.filter(_models.State.is_final == False)
+        else:
+            # Filtrar vehículos que están en un estado final (is_final == True)
+            query = query.filter(_models.State.is_final == True)
     
+    if vin:
+        query = query.filter(_models.Vehicle.vin.ilike(f"%{vin}%"))
+    
+    vehicles = query.offset(skip).limit(limit).all()
     return list(map(_schemas.Vehicle.from_orm, vehicles))
 
-
-
-# Update Vehicle
-def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
+async def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not db_vehicle:
         return None
-    db_vehicle.model_id = vehicle.model_id
-    db_vehicle.vehicle_type_id = vehicle.vehicle_type_id
+
+    # Verificar si el VIN ya existe en otro vehículo
+    if vehicle.vin != db_vehicle.vin:
+        existing_vehicle = db.query(_models.Vehicle).filter(
+            _models.Vehicle.vin == vehicle.vin
+        ).first()
+        if existing_vehicle:
+            raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
+
+    # Verificar si el modelo existe
+    existing_model = db.query(_models.Model).filter(_models.Model.id == vehicle.vehicle_model_id).first()
+    if not existing_model:
+        raise HTTPException(status_code=404, detail="Vehicle model not found.")
+
+    # Actualizar los campos
+    db_vehicle.vehicle_model_id = vehicle.vehicle_model_id
     db_vehicle.vin = vehicle.vin
-    db.commit()
-    db.refresh(db_vehicle)
+    db_vehicle.color_id = vehicle.color_id
+    db_vehicle.is_urgent = vehicle.is_urgent
+
+    try:
+        db.commit()
+        db.refresh(db_vehicle)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
+
     return db_vehicle
 
-# Delete Vehicle
-def delete_vehicle(db: "Session", vehicle_id: int):
+async def delete_vehicle(db: "Session", vehicle_id: int):
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
 
     if not db_vehicle:
@@ -302,7 +288,7 @@ def delete_vehicle(db: "Session", vehicle_id: int):
     # Borrar el vehículo
     db.delete(db_vehicle)
     db.commit()
-    return True
+    return {"detail": "Vehicle successfully deleted"}
 
 # endregion
 
@@ -333,7 +319,7 @@ async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> L
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not vehicle:
-        raise ValueError("El vehículo no existe.")
+        raise HTTPException(status_code=404, detail="Vehicle not found.")
 
     # Obtener las transiciones permitidas desde el estado actual del vehículo
     allowed_transitions = db.query(_models.Transition).filter(

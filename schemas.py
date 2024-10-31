@@ -1,6 +1,5 @@
 import datetime as _dt
 import pydantic as _pydantic
-from models import VehicleStatus
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -17,8 +16,22 @@ class UserCreate(UserBase):
 class UserRead(UserBase):
     id: int
 
+class UserOut(BaseModel):
+    id: int
+    username: str
+    is_active: bool
+    
     class Config:
         from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
 
 # endregion
 
@@ -134,6 +147,11 @@ class State(StateBase):
     class Config:
         from_attributes = True
 
+
+class StateChangeRequest(BaseModel):
+    new_state_id: int
+    comments: Optional[str] = None
+    
 # endregion
 
 # region Transition definition

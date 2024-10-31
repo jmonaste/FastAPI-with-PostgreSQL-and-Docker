@@ -3,10 +3,12 @@ import sqlalchemy as sa
 import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
-from sqlalchemy import func, Enum, Column, Integer, String
+from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from enums import VehicleStatus  # Importa el Enum
 from typing import TYPE_CHECKING
+
+
+
 
 Base = declarative_base()
 
@@ -15,7 +17,21 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+
     state_histories = relationship("StateHistory", back_populates="user")
+    refresh_tokens = relationship("RefreshToken", back_populates="user")    
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    is_revoked = Column(Boolean, default=False)
+    expires_at = Column(_sql.DateTime, nullable=False)
+    
+    user = relationship("User", back_populates="refresh_tokens")
 
 class Brand(Base):
     __tablename__ = 'brands'
@@ -142,3 +158,8 @@ class Color(Base):
 
     # Relación inversa con Vehicle
     vehicles = relationship("Vehicle", back_populates="color")
+
+
+
+
+
