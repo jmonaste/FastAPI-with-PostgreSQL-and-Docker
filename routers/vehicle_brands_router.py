@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import models
 import schemas
-import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+from services.database_service import get_db
+from services.brands_service import create_new_brand_service, get_all_brands_service, get_brand_service, delete_brand_service, update_brand_service
 
 router = APIRouter(
     prefix="/api/brands",
@@ -14,10 +15,10 @@ router = APIRouter(
     responses={404: {"description": "Not Found"}},
 )
 
-@router.post("/", response_model=schemas.Brand, status_code=201, summary="Crear una nueva marca", description="Crea una nueva marca si no existe.")
+@router.post("", response_model=schemas.Brand, status_code=201, summary="Crear una nueva marca", description="Crea una nueva marca si no existe.")
 async def create_brand(
     brand: schemas.BrandCreate,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     # Comprobar si la marca ya existe
     existing_brand = db.query(models.Brand).filter(models.Brand.name == brand.name).first()
@@ -26,25 +27,25 @@ async def create_brand(
         raise HTTPException(status_code=409, detail="Brand already exists")
 
     try:
-        return await services.create_brand(brand=brand, db=db)
+        return await create_new_brand_service(brand=brand, db=db)
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Brand already exists")
 
-@router.get("/", response_model=List[schemas.Brand], summary="Obtener todas las marcas")
+@router.get("", response_model=List[schemas.Brand], summary="Obtener todas las marcas")
 async def get_brands(
     skip: int = 0,
     limit: int = 10,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    return await services.get_all_brands(db=db, skip=skip, limit=limit)
+    return await get_all_brands_service(db=db, skip=skip, limit=limit)
 
 @router.get("/{brand_id}", response_model=schemas.Brand, summary="Obtener una marca por ID")
 async def get_brand(
     brand_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    brand = await services.get_brand(db=db, brand_id=brand_id)
+    brand = await get_brand_service(db=db, brand_id=brand_id)
     if brand is None:
         raise HTTPException(status_code=404, detail="Brand does not exist")
 
@@ -53,13 +54,13 @@ async def get_brand(
 @router.delete("/{brand_id}", status_code=204, summary="Eliminar una marca")
 async def delete_brand(
     brand_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    brand = await services.get_brand(db=db, brand_id=brand_id)
+    brand = await get_brand_service(db=db, brand_id=brand_id)
     if brand is None:
         raise HTTPException(status_code=404, detail="Brand does not exist")
 
-    await services.delete_brand(brand_id, db=db)
+    await delete_brand_service(brand_id, db=db)
     
     return {"detail": "Brand successfully deleted"}
 
@@ -67,9 +68,9 @@ async def delete_brand(
 async def update_brand(
     brand_id: int,
     brand_data: schemas.BrandCreate,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    brand = await services.get_brand(db=db, brand_id=brand_id)
+    brand = await get_brand_service(db=db, brand_id=brand_id)
     if brand is None:
         raise HTTPException(status_code=404, detail="Brand does not exist")
 
@@ -81,6 +82,6 @@ async def update_brand(
     if existing_brand:
         raise HTTPException(status_code=409, detail="Brand name already in use")
 
-    return await services.update_brand(
+    return await update_brand_service(
         brand_data=brand_data, brand_id=brand_id, db=db
     )

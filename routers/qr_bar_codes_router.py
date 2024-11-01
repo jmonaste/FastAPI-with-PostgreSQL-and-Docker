@@ -10,7 +10,8 @@ from pyzbar.pyzbar import decode
 import models
 import schemas
 import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+from services.database_service import get_db
 
 router = APIRouter(
     prefix="/api",

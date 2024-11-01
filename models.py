@@ -4,7 +4,7 @@ import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
 from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from typing import TYPE_CHECKING
 
 
@@ -29,7 +29,7 @@ class RefreshToken(Base):
     token = Column(String, unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     is_revoked = Column(Boolean, default=False)
-    expires_at = Column(_sql.DateTime, nullable=False)
+    expires_at = Column(_sql.DateTime(timezone=True), nullable=False)
     
     user = relationship("User", back_populates="refresh_tokens")
 
@@ -37,8 +37,8 @@ class Brand(Base):
     __tablename__ = 'brands'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     models = relationship("Model", back_populates="brand")
 
 class Model(Base):
@@ -47,8 +47,8 @@ class Model(Base):
     name = Column(String, index=True)
     brand_id = Column(Integer, _sql.ForeignKey('brands.id'))
     type_id = Column(Integer, _sql.ForeignKey('vehicle_types.id'))  # Relación con VehicleType
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     brand = relationship('Brand', back_populates='models')
     vehicle_type = relationship('VehicleType', back_populates='models')
@@ -58,8 +58,8 @@ class VehicleType(Base):
     __tablename__ = 'vehicle_types'
     id = Column(Integer, primary_key=True, index=True)
     type_name = Column(String, unique=True, index=True)
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     models = relationship('Model', back_populates='vehicle_type')
 
 class State(Base):
@@ -72,8 +72,8 @@ class State(Base):
     is_final = Column(_sql.Boolean, default=False)
     order = Column(Integer)
     active = Column(_sql.Boolean, default=True)
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     icon = Column(String(50))
     color = Column(String(50))
     category = Column(String(50))
@@ -91,8 +91,8 @@ class Transition(Base):
     condition = Column(String(255), nullable=True)
     action = Column(String(255), nullable=True)
     active = Column(_sql.Boolean, default=True)
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     from_state = relationship('State', foreign_keys=[from_state_id], back_populates='transitions_from')
     to_state = relationship('State', foreign_keys=[to_state_id], back_populates='transitions_to')
@@ -102,8 +102,8 @@ class Vehicle(Base):
     id = Column(Integer, primary_key=True, index=True)
     vehicle_model_id = Column(Integer, _sql.ForeignKey('models.id'))
     vin = Column(String, unique=True, nullable=False, index=True)  # Código identificador del vehículo
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_urgent = Column(_sql.Boolean, default=False)  # Por defecto no es urgente
     status_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=False)
     color_id = Column(Integer, _sql.ForeignKey('colors.id'), nullable=True)
@@ -127,7 +127,7 @@ class StateHistory(Base):
     from_state_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=True)  # Puede ser null si es el primer estado
     to_state_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=False)
     user_id = Column(Integer, _sql.ForeignKey('users.id'), nullable=False)  # Usuario que cambió el estado
-    timestamp = Column(_sql.DateTime, server_default=func.now(), nullable=False)
+    timestamp = Column(_sql.DateTime(timezone=True), server_default=func.now(), nullable=False)
     comment_id = Column(Integer, ForeignKey('states_comments.id'), nullable=True) # ALEMBIC
 
     vehicle = relationship('Vehicle', back_populates='state_history')
@@ -142,8 +142,8 @@ class StateComment(Base):
     id = Column(Integer, primary_key=True, index=True)
     state_id = Column(Integer, sa.ForeignKey('states.id'), nullable=False)
     comment = Column(sa.Text, nullable=False)
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     state = relationship('State', back_populates='state_comments')
     state_histories = relationship('StateHistory', back_populates='comment') # ??
@@ -155,8 +155,8 @@ class Color(Base):
     name = Column(String(50), nullable=False)
     hex_code = Column(String(7), nullable=False)  # Ej: "#FF0000"
     rgb_code = Column(String(20), nullable=True)  # Ej: "255,0,0"
-    created_at = Column(_sql.DateTime, server_default=func.now())
-    updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relación inversa con Vehicle
     vehicles = relationship("Vehicle", back_populates="color")

@@ -1,6 +1,5 @@
 import sqlalchemy as _sql
-import sqlalchemy.ext.declarative as _declarative
-import sqlalchemy.orm as _orm
+from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 import os
 
@@ -11,8 +10,8 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = _sql.create_engine(DATABASE_URL)
 
-SessionLocal = _orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = _declarative.declarative_base()
+Base = declarative_base()
 
 metadata = _sql.MetaData()

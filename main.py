@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from routers import brands_router, qr_bar_codes_router, vehicle_models_router, vehicle_states_router, vehicle_types_router, vehicles_router, colors_router, auth_router
+from routers import qr_bar_codes_router, vehicle_brands_router, vehicle_models_router, vehicle_states_router, vehicle_types_router, vehicles_router, colors_router, auth_router
 
 
 if TYPE_CHECKING:
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 app = FastAPI()
 
 app.include_router(vehicle_types_router.router)
-app.include_router(brands_router.router)
+app.include_router(vehicle_brands_router.router)
 app.include_router(vehicle_models_router.router)
 app.include_router(vehicles_router.router)
 app.include_router(qr_bar_codes_router.router) 

@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.orm import Session
-import models
 import schemas
-import services
-from dependencies import get_db, get_current_user
+from services.colors_service import get_color, add_color, update_color, delete_color, fetch_all_colors
+from dependencies import get_current_user
+from services.database_service import get_db
 
 router = APIRouter(
     prefix="/api/colors",
@@ -26,7 +26,7 @@ async def create_color(
     color: schemas.ColorCreate,
     db: Session = Depends(get_db),
 ):
-    new_color = await services.add_color(color=color, db=db)
+    new_color = await add_color(color=color, db=db)
     return new_color
 
 
@@ -40,7 +40,7 @@ async def read_color(
     color_id: int,
     db: Session = Depends(get_db),
 ):
-    color = await services.get_color(db=db, color_id=color_id)
+    color = await get_color(db=db, color_id=color_id)
     if color is None:
         raise HTTPException(status_code=404, detail="Color not found.")
     return color
@@ -57,7 +57,7 @@ async def modify_color(
     color: schemas.ColorCreate,
     db: Session = Depends(get_db),
 ):
-    updated_color = await services.update_color(db=db, color_id=color_id, color_data=color)
+    updated_color = await update_color(db=db, color_id=color_id, color_data=color)
     if updated_color is None:
         raise HTTPException(status_code=404, detail="Color not found.")
     return updated_color
@@ -73,7 +73,7 @@ async def remove_color(
     color_id: int,
     db: Session = Depends(get_db),
 ):
-    success = await services.delete_color(db=db, color_id=color_id)
+    success = await delete_color(db=db, color_id=color_id)
     if not success:
         raise HTTPException(status_code=404, detail="Color not found.")
     return {"detail": "Color successfully deleted."}
@@ -88,6 +88,12 @@ async def remove_color(
 async def get_all_colors(
     db: Session = Depends(get_db),
 ):
-    colors = await services.get_all_colors(db=db)
-    return colors
+    try:
+        colors = await fetch_all_colors(db=db)  # Llama a la función de servicio renombrada
+        return colors
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al obtener los colores."
+        ) from e
 

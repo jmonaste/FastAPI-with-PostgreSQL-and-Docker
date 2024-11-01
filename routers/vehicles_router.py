@@ -5,7 +5,8 @@ from sqlalchemy.exc import IntegrityError
 import models
 import schemas
 import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+from services.database_service import get_db
 
 router = APIRouter(
     prefix="/api/vehicles",
@@ -26,7 +27,7 @@ router = APIRouter(
 )
 async def create_vehicle(
     vehicle: schemas.VehicleCreate,
-    db: Session = Depends(services.get_db),
+    db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     # Verificar si el modelo de vehículo existe
@@ -51,7 +52,7 @@ async def create_vehicle(
 )
 async def read_vehicle(
     vehicle_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     db_vehicle = await services.get_vehicle(db, vehicle_id=vehicle_id)
     if db_vehicle is None:
@@ -70,7 +71,7 @@ async def get_vehicles(
     limit: int = Query(10, ge=1),
     in_progress: bool = None,
     vin: str = None,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     vehicles = await services.get_vehicles(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
     return vehicles
@@ -85,7 +86,7 @@ async def get_vehicles(
 async def update_vehicle(
     vehicle_id: int, 
     vehicle: schemas.VehicleCreate, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     db_vehicle = await services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
     if db_vehicle is None:
@@ -101,7 +102,7 @@ async def update_vehicle(
 )
 async def delete_vehicle(
     vehicle_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     success = await services.delete_vehicle(db=db, vehicle_id=vehicle_id)
     if not success:

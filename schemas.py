@@ -1,6 +1,6 @@
 import datetime as _dt
 import pydantic as _pydantic
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 
@@ -21,8 +21,7 @@ class UserOut(BaseModel):
     username: str
     is_active: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
@@ -48,8 +47,7 @@ class Brand(BrandBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 
@@ -69,8 +67,7 @@ class Model(ModelBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 
@@ -87,8 +84,7 @@ class VehicleType(VehicleTypeBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 
@@ -100,8 +96,7 @@ class VehicleBase(_pydantic.BaseModel):
     color_id: int
     is_urgent: bool
     
-    class Config:
-        arbitrary_types_allowed = True  # Permite tipos arbitrarios
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Reemplazo de Config
 
 class VehicleCreate(VehicleBase):
     pass
@@ -113,8 +108,7 @@ class Vehicle(VehicleBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 
@@ -144,11 +138,7 @@ class State(StateBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
-
-
-
+    model_config = ConfigDict(from_attributes=True)
 
 class StateChangeRequest(BaseModel):
     new_state_id: int
@@ -176,8 +166,7 @@ class Transition(TransitionBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 
@@ -188,8 +177,7 @@ class StateComment(BaseModel):
     state_id: int
     text: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StateHistoryBase(BaseModel):
     vehicle_id: int
@@ -210,8 +198,7 @@ class StateHistory(StateHistoryBase):
     id: int
     timestamp: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
         
 # endregion
 
@@ -229,8 +216,7 @@ class StateCommentRead(StateCommentBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StateCommentUpdate(StateCommentBase):
     pass
@@ -252,8 +238,7 @@ class Color(ColorBase):
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # endregion
 

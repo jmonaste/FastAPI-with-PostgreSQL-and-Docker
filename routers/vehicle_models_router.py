@@ -5,7 +5,9 @@ from sqlalchemy.exc import IntegrityError
 import models
 import schemas
 import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+from services.database_service import get_db
+from services.models_service import create_model, get_all_models, get_model, delete_model, update_model
 
 router = APIRouter(
     prefix="/api/models",
@@ -17,7 +19,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/",
+    "",
     response_model=schemas.Model,
     status_code=201,
     summary="Crear un nuevo modelo",
@@ -25,7 +27,7 @@ router = APIRouter(
 )
 async def create_model(
     model: schemas.ModelCreate,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     # Comprobar si el modelo ya existe
     existing_model = db.query(models.Model).filter(
@@ -37,19 +39,19 @@ async def create_model(
         raise HTTPException(status_code=409, detail="Model already exists for this brand")
 
     # Llamar a la función de servicio para crear el modelo
-    return await services.create_model(model=model, db=db)
+    return await create_model(model=model, db=db)
 
 
 @router.get(
-    "/",
+    "",
     response_model=List[schemas.Model],
     summary="Obtener todos los modelos",
     description="Recupera una lista de todos los modelos disponibles."
 )
 async def getmodels(
-    db: Session = Depends(services.get_db)              
+    db: Session = Depends(get_db)              
 ):
-    return await services.get_allmodels(db=db)
+    return await get_all_models(db=db)
 
 
 @router.get(
@@ -60,9 +62,9 @@ async def getmodels(
 )
 async def get_model(
     model_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    model = await services.get_model(db=db, model_id=model_id)
+    model = await get_model(db=db, model_id=model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="Model does not exist")
 
@@ -77,13 +79,13 @@ async def get_model(
 )
 async def delete_model(
     model_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    model = await services.get_model(db=db, model_id=model_id)
+    model = await get_model(db=db, model_id=model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="Model does not exist")
 
-    await services.delete_model(model_id, db=db)
+    await delete_model(model_id, db=db)
     
     return {"detail": "Model successfully deleted"}
 
@@ -98,10 +100,10 @@ async def delete_model(
 async def update_model(
     model_id: int, 
     model: schemas.ModelCreate, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     try:
-        updated_model = await services.update_model(model_id, model, db)
+        updated_model = await update_model(model_id, model, db)
         return updated_model
     except HTTPException as e:
         raise e

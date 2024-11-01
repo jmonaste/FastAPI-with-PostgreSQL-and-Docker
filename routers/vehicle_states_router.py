@@ -6,7 +6,10 @@ from sqlalchemy.orm import Session
 import models
 import schemas
 import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+
+from services.states_management_service import get_allowed_transitions_for_vehicle, get_all_states, get_vehicle_state_history, get_vehicle_current_state, change_vehicle_state, get_state_comments
+from services.database_service import get_db
 
 router = APIRouter(
     prefix="/api",
@@ -25,7 +28,7 @@ async def get_allowed_transitions(
     vehicle_id: int,
     db: Session = Depends(get_db),
 ):
-    return await services.get_allowed_transitions_for_vehicle(vehicle_id=vehicle_id, db=db)
+    return await get_allowed_transitions_for_vehicle(vehicle_id=vehicle_id, db=db)
 
 @router.get(
     "/states",
@@ -36,7 +39,7 @@ async def get_allowed_transitions(
 async def get_all_states(
     db: Session = Depends(get_db),
 ):
-    return await services.get_all_states(db=db)
+    return await get_all_states(db=db)
 
 @router.get(
     "/vehicles/{vehicle_id}/state_history",
@@ -48,7 +51,7 @@ async def get_vehicle_state_history(
     vehicle_id: int,
     db: Session = Depends(get_db),
 ):
-    state_history = await services.get_vehicle_state_history(vehicle_id=vehicle_id, db=db)
+    state_history = await get_vehicle_state_history(vehicle_id=vehicle_id, db=db)
     if not state_history:
         raise HTTPException(status_code=404, detail="Vehicle state history not found.")
     return state_history
@@ -63,7 +66,7 @@ async def get_vehicle_current_state(
     vehicle_id: int,
     db: Session = Depends(get_db),
 ):
-    state = await services.get_vehicle_current_state(db=db, vehicle_id=vehicle_id)
+    state = await get_vehicle_current_state(db=db, vehicle_id=vehicle_id)
     if not state:
         raise HTTPException(status_code=404, detail="Vehicle state not found.")
     return state
@@ -81,7 +84,7 @@ async def change_vehicle_state(
     current_user: models.User = Depends(get_current_user),
 ):
     try:
-        state_history_entry = await services.change_vehicle_state(
+        state_history_entry = await change_vehicle_state(
             vehicle_id=vehicle_id,
             new_state_id=state_change.new_state_id,
             user_id=current_user.id,
@@ -110,7 +113,7 @@ async def get_state_comments(
     state_id: int,
     db: Session = Depends(get_db),
 ):
-    comments = await services.get_state_comments(state_id=state_id, db=db)
+    comments = await get_state_comments(state_id=state_id, db=db)
     if not comments:
         raise HTTPException(status_code=404, detail="State comments not found.")
     return comments

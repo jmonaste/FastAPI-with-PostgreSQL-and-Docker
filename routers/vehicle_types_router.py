@@ -5,7 +5,10 @@ from sqlalchemy.exc import IntegrityError
 import models
 import schemas
 import services
-from dependencies import get_db, get_current_user
+from dependencies import get_current_user
+from services.database_service import get_db
+from services.vehicle_types_service import create_vehicle_type_service, get_all_vehicle_types_service, get_vehicle_type_service, update_vehicle_type_service, delete_vehicle_type_service
+
 
 router = APIRouter(
     prefix="/api/vehicle/types",
@@ -15,10 +18,10 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=schemas.VehicleType, status_code=201, summary="Crear un nuevo tipo de vehículo", description="Crea un nuevo tipo de vehículo si no existe.")
+@router.post("", response_model=schemas.VehicleType, status_code=201, summary="Crear un nuevo tipo de vehículo", description="Crea un nuevo tipo de vehículo si no existe.")
 async def create_vehicle_type(
     vehicle_type: schemas.VehicleTypeCreate,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     # Comprobar si el tipo de vehículo ya existe
     existing_type = db.query(models.VehicleType).filter(models.VehicleType.type_name == vehicle_type.type_name).first()
@@ -27,25 +30,25 @@ async def create_vehicle_type(
         raise HTTPException(status_code=409, detail="Vehicle Type already exist")
     
     try:
-        return await services.create_vehicle_type(vehicle_type=vehicle_type, db=db)
+        return await create_vehicle_type_service(vehicle_type=vehicle_type, db=db)
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Vehicle Type already exist")
 
-@router.get("/", response_model=List[schemas.VehicleType], summary="Obtener todos los tipos de vehículos")
+@router.get("", response_model=List[schemas.VehicleType], summary="Obtener todos los tipos de vehículos")
 async def get_vehicle_types(
     skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
-    vehicle_types = await services.get_all_vehicle_types(db=db, skip=skip, limit=limit)
+    vehicle_types = await get_all_vehicle_types_service(db=db, skip=skip, limit=limit)
     return vehicle_types
 
 @router.get("/{vehicle_type_id}", response_model=schemas.VehicleType, summary="Obtener un tipo de vehículo por ID")
 async def get_vehicle_type(
     vehicle_type_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    vehicle_type = await services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
+    vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
         raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
 
@@ -54,13 +57,13 @@ async def get_vehicle_type(
 @router.delete("/{vehicle_type_id}", status_code=204, summary="Eliminar un tipo de vehículo")
 async def delete_vehicle_type(
     vehicle_type_id: int, 
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
-    vehicle_type = await services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
+    vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
         raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
 
-    await services.delete_vehicle_type(vehicle_type_id, db=db)
+    await delete_vehicle_type_service(vehicle_type_id, db=db)
     
     return {"detail": "Vehicle type successfully deleted"}
 
@@ -68,7 +71,7 @@ async def delete_vehicle_type(
 async def update_vehicle_type(
     vehicle_type_id: int,
     vehicle_type_data: schemas.VehicleTypeCreate,
-    db: Session = Depends(services.get_db)
+    db: Session = Depends(get_db)
 ):
     # Verificar si el nuevo nombre ya existe en otro registro
     existing_type = db.query(models.VehicleType).filter(
@@ -78,10 +81,10 @@ async def update_vehicle_type(
     if existing_type:
         raise HTTPException(status_code=409, detail="Vehicle Type already exist")
     
-    vehicle_type = await services.get_vehicle_type(db=db, vehicle_type_id=vehicle_type_id)
+    vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
         raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
 
-    return await services.update_vehicle_type(
+    return await update_vehicle_type_service(
         vehicle_type_data=vehicle_type_data, vehicle_type_id=vehicle_type_id, db=db
     )
