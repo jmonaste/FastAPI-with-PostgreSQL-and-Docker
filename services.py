@@ -211,7 +211,7 @@ async def create_vehicle(
         to_state_id=vehicle_model.status_id,  # Estado inicial
         user_id=user_id,
         db=db,
-        comments="Creación del vehículo con estado inicial"
+        comment_id=None
     )
 
     return _schemas.Vehicle.from_orm(vehicle_model)
@@ -300,7 +300,7 @@ async def register_state_history(
     to_state_id: int, 
     user_id: int, 
     db: "Session",
-    comments: str = ""
+    comment_id: int
 ):
     state_history_entry = _models.StateHistory(
         vehicle_id=vehicle_id,
@@ -308,7 +308,7 @@ async def register_state_history(
         to_state_id=to_state_id,
         user_id=user_id,
         timestamp=datetime.utcnow(),
-        comments=comments
+        comment_id=comment_id
     )
 
     db.add(state_history_entry)
@@ -363,7 +363,7 @@ async def change_vehicle_state(
     new_state_id: int,
     user_id: int,
     db: Session,
-    comments: Optional[str] = None
+    comment_id: Optional[int] = None
 ) -> _schemas.StateHistory:
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
@@ -384,9 +384,20 @@ async def change_vehicle_state(
     if not valid_transition:
         raise ValueError("La transición al nuevo estado no es válida.")
 
+    # Si se proporciona un comment_id, validar que existe y está asociado al nuevo estado
+    if comment_id is not None:
+        comment = db.query(_models.StateComment).filter(
+            _models.StateComment.id == comment_id,
+            _models.StateComment.state_id == new_state_id
+        ).first()
+        if not comment:
+            raise ValueError("El comentario proporcionado no es válido para el estado seleccionado.")
+    else:
+        comment = None
+
     # Actualizar el estado del vehículo
     vehicle.status_id = new_state_id
-    vehicle.updated_at = _dt.datetime.utcnow()
+    vehicle.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(vehicle)
 
@@ -396,14 +407,15 @@ async def change_vehicle_state(
         from_state_id=valid_transition.from_state_id,
         to_state_id=valid_transition.to_state_id,
         user_id=user_id,
-        timestamp=_dt.datetime.utcnow(),
-        comments=comments
+        timestamp=datetime.utcnow(),
+        comment_id=comment.id if comment else None
     )
     db.add(state_history_entry)
     db.commit()
     db.refresh(state_history_entry)
 
     return _schemas.StateHistory.from_orm(state_history_entry)
+
 
 async def get_state_comments(state_id: int, db: Session) -> List[_schemas.StateCommentRead]:
     """
@@ -437,13 +449,13 @@ async def add_color(color: _schemas.ColorCreate, db: "Session") -> _schemas.Colo
 
     return _schemas.Color.from_orm(color_model)
 
-def get_color(db: "Session", color_id: int) -> _schemas.Color:
+async def get_color(db: "Session", color_id: int) -> _schemas.Color:
     color = db.query(_models.Color).filter(_models.Color.id == color_id).first()
     if not color:
         raise HTTPException(status_code=404, detail="Color not found")
     return _schemas.Color.from_orm(color)
 
-def update_color(db: "Session", color_id: int, color_data: _schemas.ColorCreate) -> _schemas.Color:
+async def update_color(db: "Session", color_id: int, color_data: _schemas.ColorCreate) -> _schemas.Color:
     db_color = db.query(_models.Color).filter(_models.Color.id == color_id).first()
     if not db_color:
         raise HTTPException(status_code=404, detail="Color not found")
@@ -458,7 +470,7 @@ def update_color(db: "Session", color_id: int, color_data: _schemas.ColorCreate)
 
     return _schemas.Color.from_orm(db_color)
 
-def delete_color(db: "Session", color_id: int) -> bool:
+async def delete_color(db: "Session", color_id: int) -> bool:
     db_color = db.query(_models.Color).filter(_models.Color.id == color_id).first()
     if not db_color:
         raise HTTPException(status_code=404, detail="Color not found")

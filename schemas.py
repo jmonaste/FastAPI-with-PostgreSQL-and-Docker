@@ -148,9 +148,11 @@ class State(StateBase):
         from_attributes = True
 
 
+
+
 class StateChangeRequest(BaseModel):
     new_state_id: int
-    comments: Optional[str] = None
+    comment_id: Optional[int] = None
     
 # endregion
 
@@ -181,12 +183,22 @@ class Transition(TransitionBase):
 
 # region StateHistory definition
 
+class StateComment(BaseModel):
+    id: int
+    state_id: int
+    text: str
+
+    class Config:
+        from_attributes = True
+
 class StateHistoryBase(BaseModel):
     vehicle_id: int
     from_state_id: Optional[int] = None
     to_state_id: int
     user_id: int
-    comments: Optional[str] = None
+    comment_id: Optional[int] = None
+    comment: Optional[StateComment] = None
+
 
 class StateHistoryCreate(StateHistoryBase):
     pass

@@ -128,12 +128,13 @@ class StateHistory(Base):
     to_state_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=False)
     user_id = Column(Integer, _sql.ForeignKey('users.id'), nullable=False)  # Usuario que cambió el estado
     timestamp = Column(_sql.DateTime, server_default=func.now(), nullable=False)
-    comments = Column(_sql.Text, nullable=True)
+    comment_id = Column(Integer, ForeignKey('states_comments.id'), nullable=True) # ALEMBIC
 
     vehicle = relationship('Vehicle', back_populates='state_history')
     from_state = relationship('State', foreign_keys=[from_state_id])
     to_state = relationship('State', foreign_keys=[to_state_id])
     user = relationship('User', back_populates='state_histories')
+    comment = relationship("StateComment", back_populates="state_histories")
 
 class StateComment(Base):
     __tablename__ = 'states_comments'
@@ -145,6 +146,7 @@ class StateComment(Base):
     updated_at = Column(_sql.DateTime, server_default=func.now(), onupdate=func.now())
 
     state = relationship('State', back_populates='state_comments')
+    state_histories = relationship('StateHistory', back_populates='comment') # ??
 
 class Color(Base):
     __tablename__ = 'colors'
