@@ -27,12 +27,12 @@ async def create_vehicle_type(
     existing_type = db.query(models.VehicleType).filter(models.VehicleType.type_name == vehicle_type.type_name).first()
     
     if existing_type:
-        raise HTTPException(status_code=409, detail="Vehicle Type already exist")
+        raise HTTPException(status_code=409, detail="Vehicle type already exists")
     
     try:
         return await create_vehicle_type_service(vehicle_type=vehicle_type, db=db)
     except IntegrityError:
-        raise HTTPException(status_code=409, detail="Vehicle Type already exist")
+        raise HTTPException(status_code=409, detail="Vehicle type already exists")
 
 @router.get("", response_model=List[schemas.VehicleType], summary="Obtener todos los tipos de vehículos")
 async def get_vehicle_types(
@@ -50,7 +50,7 @@ async def get_vehicle_type(
 ):
     vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
-        raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
+        raise HTTPException(status_code=404, detail="Vehicle type does not exist")
 
     return vehicle_type
 
@@ -61,7 +61,7 @@ async def delete_vehicle_type(
 ):
     vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
-        raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
+        raise HTTPException(status_code=404, detail="Vehicle type does not exist")
 
     await delete_vehicle_type_service(vehicle_type_id, db=db)
     
@@ -79,11 +79,11 @@ async def update_vehicle_type(
         models.VehicleType.id != vehicle_type_id
     ).first()
     if existing_type:
-        raise HTTPException(status_code=409, detail="Vehicle Type already exist")
+        raise HTTPException(status_code=409, detail="Vehicle type already exists")
     
     vehicle_type = await get_vehicle_type_service(db=db, vehicle_type_id=vehicle_type_id)
     if vehicle_type is None:
-        raise HTTPException(status_code=404, detail="Vehicle Type does not exist")
+        raise HTTPException(status_code=404, detail="Vehicle type does not exist")
 
     return await update_vehicle_type_service(
         vehicle_type_data=vehicle_type_data, vehicle_type_id=vehicle_type_id, db=db
