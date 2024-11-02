@@ -1,6 +1,6 @@
 import datetime as _dt
 import pydantic as _pydantic
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
 
 
@@ -54,9 +54,21 @@ class Brand(BrandBase):
 # region Model definition
 
 class ModelBase(_pydantic.BaseModel):
-    name: str
-    brand_id: int
-    type_id: int  # El tipo de vehículo se define a nivel de modelo
+    name: str = Field(..., description="Nombre del modelo de vehículo")
+    brand_id: int = Field(..., description="ID de la marca asociada")
+    type_id: int  = Field(..., description="ID del tipo de vehículo asociado")
+
+    @field_validator('name')
+    def name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Name cannot be empty or blank')
+        return v.strip()
+
+    @field_validator('brand_id', 'type_id')
+    def ids_must_be_positive(cls, v, field):
+        if not isinstance(v, int) or v <= 0:
+            raise ValueError(f"{field.name} must be a positive integer")
+        return v
 
 class ModelCreate(ModelBase):
     pass
