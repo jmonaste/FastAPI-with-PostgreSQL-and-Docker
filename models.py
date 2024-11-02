@@ -3,7 +3,7 @@ import sqlalchemy as sa
 import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
-from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from typing import TYPE_CHECKING
 
@@ -152,11 +152,17 @@ class Color(Base):
     __tablename__ = 'colors'
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), nullable=False)
-    hex_code = Column(String(7), nullable=False)  # Ej: "#FF0000"
+    name = Column(String(50), nullable=False, unique=True)
+    hex_code = Column(String(7), nullable=False, unique=True)  # Ej: "#FF0000"
     rgb_code = Column(String(20), nullable=True)  # Ej: "255,0,0"
     created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
     updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Definir restricciones de unicidad con nombres explícitos
+    __table_args__ = (
+        UniqueConstraint('name', name='uq_colors_name'),
+        UniqueConstraint('hex_code', name='uq_colors_hex_code'),
+    )
 
     # Relación inversa con Vehicle
     vehicles = relationship("Vehicle", back_populates="color")

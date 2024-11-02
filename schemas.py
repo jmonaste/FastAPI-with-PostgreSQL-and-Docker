@@ -2,7 +2,7 @@ import datetime as _dt
 import pydantic as _pydantic
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
-
+import re
 
 
 # region User definition
@@ -238,9 +238,45 @@ class StateCommentUpdate(StateCommentBase):
 # region Color definition
 
 class ColorBase(BaseModel):
-    name: str
-    hex_code: str
-    rgb_code: Optional[str] = None
+    name: str = Field(..., description="Nombre del color")
+    hex_code: str = Field(..., description="Código hexadecimal del color (Ej: '#FF0000')")
+    rgb_code: Optional[str] = Field(None, description="Código RGB del color (Ej: '255,0,0')")
+
+    @field_validator('name')
+    def name_must_not_be_empty(cls, v):
+        """
+        Valida que el campo 'name' no esté vacío ni contenga solo espacios en blanco.
+        """
+        if not v or not v.strip():
+            raise ValueError('Name cannot be empty or blank')
+        return v.strip()
+
+    @field_validator('hex_code')
+    def hex_code_must_be_valid(cls, v):
+        """
+        Valida que el campo 'hex_code' siga el formato '#RRGGBB'.
+        """
+        if not re.match(r'^#[0-9A-Fa-f]{6}$', v):
+            raise ValueError('hex_code must be in the format #RRGGBB')
+        return v.upper()
+
+    @field_validator('rgb_code')
+    def rgb_code_must_be_valid(cls, v):
+        """
+        Valida que el campo 'rgb_code' siga el formato 'R,G,B' donde R, G, B están entre 0 y 255.
+        """
+        if v is None:
+            return v
+        parts = v.split(',')
+        if len(parts) != 3:
+            raise ValueError('rgb_code must have three components separated by commas')
+        try:
+            rgb = [int(part) for part in parts]
+        except ValueError:
+            raise ValueError('rgb_code must contain integers')
+        if any(not (0 <= num <= 255) for num in rgb):
+            raise ValueError('Each component in rgb_code must be between 0 and 255')
+        return v
 
 class ColorCreate(ColorBase):
     pass

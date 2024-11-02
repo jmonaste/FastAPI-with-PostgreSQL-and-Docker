@@ -11,6 +11,12 @@ from models import Base, Brand
 import uuid
 import httpx
 from fastapi import status
+import pytest
+import uuid
+from fastapi import status
+from datetime import datetime, timezone
+import pytest_asyncio
+
 
 # Usando SQLite en memoria para pruebas rápidas
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -65,6 +71,7 @@ def httpx_client():
     client = httpx.Client(base_url=base_url)
     yield client
     client.close()
+
 
 @pytest.fixture(scope="session")
 def unique_username():
