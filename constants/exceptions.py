@@ -9,3 +9,6 @@ UNEXPECTED_ERROR = "An unexpected error occurred."
 
 VEHICLE_NOT_FOUND = "Vehicle not found."
 INVALID_VIN = "VIN cannot be empty or null."
+
+STATE_NOT_FOUND = "State was not found."
+STATE_COMMENT_NOT_FOUND = "State has no comments."

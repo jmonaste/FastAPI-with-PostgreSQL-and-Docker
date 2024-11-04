@@ -5,10 +5,14 @@ import schemas as _schemas
 from fastapi import HTTPException
 from datetime import datetime, timezone
 from typing import Optional
+from services.exceptions import StateNotFoundException, StateCommentsNotFoundException
+from constants.exceptions import STATE_NOT_FOUND, STATE_COMMENT_NOT_FOUND
 
 
 
-async def register_state_history(
+
+
+async def register_state_history_service(
     vehicle_id: int, 
     from_state_id: int, 
     to_state_id: int, 
@@ -29,7 +33,7 @@ async def register_state_history(
     db.commit()
     db.refresh(state_history_entry)
 
-async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> List[_schemas.Transition]:
+async def get_allowed_transitions_for_vehicle_service(vehicle_id: int, db: Session) -> List[_schemas.Transition]:
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not vehicle:
@@ -42,11 +46,11 @@ async def get_allowed_transitions_for_vehicle(vehicle_id: int, db: Session) -> L
 
     return [_schemas.Transition.model_validate(transition) for transition in allowed_transitions]
 
-async def get_all_states(db: Session) -> List[_schemas.State]:
+async def get_all_states_service(db: Session) -> List[_schemas.State]:
     states = db.query(_models.State).all()
     return [ _schemas.State.model_validate(state) for state in states ]
 
-async def get_vehicle_state_history(vehicle_id: int, db: Session) -> List[_schemas.StateHistory]:
+async def get_vehicle_state_history_service(vehicle_id: int, db: Session) -> List[_schemas.StateHistory]:
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not vehicle:
@@ -59,7 +63,7 @@ async def get_vehicle_state_history(vehicle_id: int, db: Session) -> List[_schem
 
     return [_schemas.StateHistory.model_validate(entry) for entry in state_history]
 
-async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.State:
+async def get_vehicle_current_state_service(db: Session, vehicle_id: int) -> _schemas.State:
     # Obtener el vehículo de la base de datos
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not vehicle:
@@ -72,7 +76,7 @@ async def get_vehicle_current_state(db: Session, vehicle_id: int) -> _schemas.St
 
     return _schemas.State.model_validate(state)
 
-async def change_vehicle_state(
+async def change_vehicle_state_service(
     vehicle_id: int,
     new_state_id: int,
     user_id: int,
@@ -130,20 +134,23 @@ async def change_vehicle_state(
 
     return _schemas.StateHistory.model_validate(state_history_entry)
 
-
-async def get_state_comments(state_id: int, db: Session) -> List[_schemas.StateCommentRead]:
+async def get_state_comments_service(state_id: int, db: Session) -> List[_schemas.StateCommentRead]:
     """
     Obtiene los comentarios predefinidos para un estado específico.
     """
     # Verificar si el estado existe
     state = db.query(_models.State).filter(_models.State.id == state_id).first()
     if not state:
-        raise ValueError("Estado no encontrado.")
+        raise StateNotFoundException(STATE_NOT_FOUND)
     
     # Obtener los comentarios asociados al estado
     comments = db.query(_models.StateComment).filter(_models.StateComment.state_id == state_id).all()
     
+    if not comments:
+        raise StateCommentsNotFoundException(STATE_COMMENT_NOT_FOUND)
+    
     return [_schemas.StateCommentRead.model_validate(comment) for comment in comments]
+
 
 
 

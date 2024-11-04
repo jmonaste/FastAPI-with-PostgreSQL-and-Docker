@@ -5,7 +5,7 @@ import schemas as _schemas
 from fastapi import HTTPException, status
 from datetime import datetime, timezone
 from typing import Optional, Union
-from services.states_management_service import register_state_history
+from services.states_management_service import register_state_history_service
 from services.exceptions import (
     VehicleNotFound,
     VehicleModelNotFound,
@@ -69,7 +69,7 @@ async def create_vehicle_service(
     db.refresh(vehicle_model)
 
     # Registrar el estado inicial en el historial
-    await register_state_history(
+    await register_state_history_service(
         vehicle_id=vehicle_model.id,
         from_state_id=None,  # No hay estado previo ya que es el primer estado
         to_state_id=vehicle_model.status_id,  # Estado inicial

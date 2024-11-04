@@ -118,8 +118,6 @@ def auth_tokens(unique_username):
             "refresh_token": refresh_token
         }
 
-
-
 @pytest_asyncio.fixture
 def tracked_brands(httpx_client, auth_tokens):
     """
@@ -221,3 +219,5 @@ def tracked_vehicles(httpx_client, auth_tokens, tracked_vehicle_models, tracked_
         if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
             # Opcional: Loggear o manejar errores inesperados
             print(f"Error al eliminar el vehículo con ID {vehicle_id}: {response.text}")
+
+
