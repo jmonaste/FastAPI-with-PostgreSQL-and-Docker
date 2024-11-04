@@ -7,7 +7,9 @@ import schemas
 import services
 from dependencies import get_current_user
 from services.database_service import get_db
-
+from services.vehicles_service import create_vehicle_service, get_vehicles_service, update_vehicle_service, delete_vehicle_service, get_vehicle_by_id_service
+from services.vehicles_service import VehicleModelNotFound, ColorNotFound, InitialStateNotFound
+from constants.exceptions import (VIN_ALREADY_EXISTS)
 router = APIRouter(
     prefix="/api/vehicles",
     tags=["Vehicles"],
@@ -16,10 +18,8 @@ router = APIRouter(
 )
 
 
-
-
 @router.post(
-    "/",
+    "",
     response_model=schemas.Vehicle,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un nuevo vehículo",
@@ -30,18 +30,21 @@ async def create_vehicle(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    # Verificar si el modelo de vehículo existe
-    existing_model = db.query(models.Model).filter(models.Model.id == vehicle.vehicle_model_id).first()
-    if not existing_model:
-        raise HTTPException(status_code=404, detail="Vehicle model not found.")
-
     try:
-        # Crear el vehículo
-        new_vehicle = await services.create_vehicle(vehicle=vehicle, db=db, user_id=current_user.id)
+        new_vehicle = await create_vehicle_service(vehicle=vehicle, db=db, user_id=current_user.id)
         return new_vehicle
+    except VehicleModelNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ColorNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except InitialStateNotFound as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=VIN_ALREADY_EXISTS)
+    except Exception as e:
+        # Manejo de errores inesperados
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error inesperado.")
     
 
 @router.get(
@@ -54,14 +57,14 @@ async def read_vehicle(
     vehicle_id: int, 
     db: Session = Depends(get_db)
 ):
-    db_vehicle = await services.get_vehicle(db, vehicle_id=vehicle_id)
+    db_vehicle = await get_vehicle_by_id_service(db, vehicle_id=vehicle_id)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
 
 
 @router.get(
-    "/",
+    "",
     response_model=List[schemas.Vehicle],
     summary="Obtener lista de vehículos",
     description="Recupera una lista de vehículos con filtros opcionales.",
@@ -73,7 +76,7 @@ async def get_vehicles(
     vin: str = None,
     db: Session = Depends(get_db)
 ):
-    vehicles = await services.get_vehicles(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
+    vehicles = await get_vehicles_service(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
     return vehicles
 
 
@@ -88,7 +91,7 @@ async def update_vehicle(
     vehicle: schemas.VehicleCreate, 
     db: Session = Depends(get_db)
 ):
-    db_vehicle = await services.update_vehicle(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
+    db_vehicle = await update_vehicle_service(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
     if db_vehicle is None:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return db_vehicle
@@ -104,7 +107,7 @@ async def delete_vehicle(
     vehicle_id: int, 
     db: Session = Depends(get_db)
 ):
-    success = await services.delete_vehicle(db=db, vehicle_id=vehicle_id)
+    success = await delete_vehicle_service(db=db, vehicle_id=vehicle_id)
     if not success:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return {"detail": "Vehicle successfully deleted"}

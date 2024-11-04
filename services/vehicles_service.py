@@ -4,37 +4,66 @@ import models as _models
 import schemas as _schemas
 from fastapi import HTTPException, status
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
 from services.states_management_service import register_state_history
+from constants.exceptions import (
+    VEHICLE_MODEL_NOT_FOUND,
+    COLOR_NOT_FOUND,
+    INITIAL_STATE_NOT_FOUND
+)
 
+# Definición de excepciones personalizadas para un manejo más claro
+class VehicleModelNotFound(Exception):
+    pass
 
+class ColorNotFound(Exception):
+    pass
 
-async def create_vehicle(
-    vehicle: _schemas.VehicleCreate, db: "Session", user_id: int
+class InitialStateNotFound(Exception):
+    pass
+
+async def create_vehicle_service(
+    vehicle: _schemas.VehicleCreate, db: Session, user_id: int
 ) -> _schemas.Vehicle:
-    
-     # Obtener el estado inicial desde la base de datos
-    initial_state = db.query(_models.State).filter_by(is_initial=True).first()
+    """
+    Servicio para crear un nuevo vehículo. Realiza todas las validaciones necesarias
+    y maneja la lógica de negocio asociada.
+    """
 
+    # Verificar si el modelo de vehículo existe
+    existing_model = db.query(_models.Model).filter(_models.Model.id == vehicle.vehicle_model_id).first()
+    if not existing_model:
+        raise VehicleModelNotFound(VEHICLE_MODEL_NOT_FOUND)
+
+    # Verificar si existe el color en el sistema
+    color = db.query(_models.Color).filter(_models.Color.id == vehicle.color_id).first()
+    if not color:
+        raise ColorNotFound(COLOR_NOT_FOUND)
+
+    # Obtener el estado inicial desde la base de datos
+    initial_state = db.query(_models.State).filter_by(is_initial=True).first()
     if not initial_state:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No initial state configured in the system."
-        )
+        raise InitialStateNotFound(INITIAL_STATE_NOT_FOUND)
 
     # Agregar el estado inicial a los datos del vehículo
     vehicle_data = vehicle.model_dump(exclude_unset=True)
     vehicle_data.update({"status_id": initial_state.id})
 
-    # Crear el modelo de vehículo
+    # Crear la instancia del vehículo
     vehicle_model = _models.Vehicle(
         **vehicle_data,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc)
     )
 
+    # Agregar y confirmar la transacción
     db.add(vehicle_model)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise  # Será manejado en el endpoint
+
     db.refresh(vehicle_model)
 
     # Registrar el estado inicial en el historial
@@ -49,10 +78,18 @@ async def create_vehicle(
 
     return _schemas.Vehicle.model_validate(vehicle_model)
 
-async def get_vehicle(db: "Session", vehicle_id: int):
-    return db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+async def get_vehicle_by_id_service(db: Session, vehicle_id: int):
+    vehicle = (
+        db.query(_models.Vehicle)
+        .join(_models.State, _models.Vehicle.status_id == _models.State.id)
+        .filter(_models.Vehicle.id == vehicle_id)
+        .first()
+    )
+    if not vehicle:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+    return _schemas.Vehicle.model_validate(vehicle)
 
-async def get_vehicles(
+async def get_vehicles_service(
     db: Session,
     skip: int = 0,
     limit: int = 20,
@@ -76,7 +113,7 @@ async def get_vehicles(
     vehicles = query.offset(skip).limit(limit).all()
     return list(map(_schemas.Vehicle.model_validate, vehicles))
 
-async def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
+async def update_vehicle_service(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not db_vehicle:
         return None
@@ -109,18 +146,39 @@ async def update_vehicle(db: "Session", vehicle_id: int, vehicle: _schemas.Vehic
 
     return db_vehicle
 
-async def delete_vehicle(db: "Session", vehicle_id: int):
-    db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
+async def delete_vehicle_service(db: "Session", vehicle_id: int) -> Union[bool, dict]:
+    try:
+        # Buscar el vehículo por su ID
+        db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
 
-    if not db_vehicle:
-        return False
+        if not db_vehicle:
+            # Si el vehículo no existe, lanzar una excepción HTTP 404
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vehicle not found"
+            )
+        
+        # Eliminar los registros asociados en StateHistory
+        db.query(_models.StateHistory).filter(_models.StateHistory.vehicle_id == vehicle_id).delete()
+        
+        # Eliminar el vehículo
+        db.delete(db_vehicle)
+        
+        # Confirmar la transacción
+        db.commit()
+        
+        return {"detail": "Vehicle successfully deleted"}
     
-    # Borrar el historial de estados asociado al vehículo
-    db.query(_models.StateHistory).filter(_models.StateHistory.vehicle_id == vehicle_id).delete()
-
-    # Borrar el vehículo
-    db.delete(db_vehicle)
-    db.commit()
-    return {"detail": "Vehicle successfully deleted"}
+    except HTTPException as http_exc:
+        # Re-levantar excepciones HTTP para que sean manejadas por el endpoint
+        raise http_exc
+    
+    except Exception as exc:
+        # En caso de otros errores, re-levantar una excepción HTTP 500
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while deleting the vehicle: {str(exc)}"
+        )
 
 

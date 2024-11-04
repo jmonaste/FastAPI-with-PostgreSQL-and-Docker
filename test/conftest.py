@@ -118,3 +118,106 @@ def auth_tokens(unique_username):
             "refresh_token": refresh_token
         }
 
+
+
+@pytest_asyncio.fixture
+def tracked_brands(httpx_client, auth_tokens):
+    """
+    Fixture para rastrear y limpiar las marcas creadas durante las pruebas.
+
+    Args:
+        httpx_client: Cliente HTTP para realizar solicitudes a la API.
+        headers: Encabezados de autorización para las solicitudes.
+
+    Yields:
+        Una lista para almacenar los IDs de las marcas creadas.
+    """
+    created_brand_ids = []
+    yield created_brand_ids
+    # Teardown: Eliminar todas las marcas rastreadas
+    for brand_id in created_brand_ids:
+        response = httpx_client.delete(
+            f"/api/brands/{brand_id}", 
+            headers={"Authorization": f"Bearer {auth_tokens['access_token']}"}
+        )
+        if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
+            # Opcional: Loggear o manejar errores inesperados
+            print(f"Error al eliminar la marca con ID {brand_id}: {response.text}")
+
+@pytest.fixture
+def tracked_colors(httpx_client, auth_tokens):
+    """
+    Fixture para rastrear y limpiar los colores creados durante las pruebas.
+
+    Args:
+        httpx_client: Cliente HTTP para realizar solicitudes a la API.
+        auth_tokens: Tokens de autenticación para los encabezados de autorización.
+
+    Yields:
+        Una lista para almacenar los IDs de los colores creados.
+    """
+    created_color_ids = []
+    yield created_color_ids
+    # Teardown: Eliminar todos los colores rastreados
+    for color_id in created_color_ids:
+        response = httpx_client.delete(
+            f"/api/colors/{color_id}",
+            headers={"Authorization": f"Bearer {auth_tokens['access_token']}"}
+        )
+        if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
+            # Opcional: Loggear o manejar errores inesperados
+            print(f"Error al eliminar el color con ID {color_id}: {response.text}")
+
+@pytest_asyncio.fixture
+def tracked_vehicle_types(httpx_client, auth_tokens):
+    created_vehicle_types_ids = []
+    yield created_vehicle_types_ids
+    # Teardown: Eliminar todas las marcas rastreadas
+    for vehicle_type_id in created_vehicle_types_ids:
+        response = httpx_client.delete(
+            f"/api/vehicle/types/{vehicle_type_id}", 
+            headers={"Authorization": f"Bearer {auth_tokens['access_token']}"}
+        )
+        if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
+            print(f"Error al eliminar el tipo de vhiculo con ID {vehicle_type_id}: {response.text}")
+
+@pytest.fixture
+def tracked_vehicle_models(httpx_client, auth_tokens):
+    """
+    Fixture para rastrear y limpiar los modelos de vehículos creados durante las pruebas.
+
+    Args:
+        httpx_client: Cliente HTTP para realizar solicitudes a la API.
+        headers: Encabezados de autorización para las solicitudes.
+
+    Yields:
+        Una lista para almacenar los IDs de los modelos de vehículos creados.
+    """
+    created_model_ids = []
+    yield created_model_ids
+    # Teardown: Eliminar todos los modelos de vehículos rastreados
+    for model_id in created_model_ids:
+        response = httpx_client.delete(f"/api/models/{model_id}", headers={"Authorization": f"Bearer {auth_tokens['access_token']}"})
+        if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
+            print(f"Error al eliminar el modelo de vehículo con ID {model_id}: {response.text}")
+
+@pytest.fixture
+def tracked_vehicles(httpx_client, auth_tokens, tracked_vehicle_models, tracked_colors):
+    """
+    Fixture para rastrear y limpiar los vehículos creados durante las pruebas.
+
+    Args:
+        httpx_client: Cliente HTTP para realizar solicitudes a la API.
+        headers: Encabezados de autorización para las solicitudes.
+
+    Yields:
+        Una lista para almacenar los IDs de los vehículos creados.
+    """
+    created_vehicle_ids = []
+    yield created_vehicle_ids
+    # Teardown: Eliminar todos los vehículos rastreados
+    for vehicle_id in created_vehicle_ids:
+        response = httpx_client.delete(f"/api/vehicles/{vehicle_id}", headers={"Authorization": f"Bearer {auth_tokens['access_token']}"})
+        if response.status_code not in [status.HTTP_204_NO_CONTENT, status.HTTP_404_NOT_FOUND]:
+            # Opcional: Loggear o manejar errores inesperados
+            print(f"Error al eliminar el vehículo con ID {vehicle_id}: {response.text}")

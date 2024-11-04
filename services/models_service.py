@@ -15,20 +15,6 @@ import schemas as _schemas
 async def create_model_service(
     model: _schemas.ModelCreate, db: "Session"
 ) -> _schemas.Model:
-    """
-    Crea un nuevo modelo de vehículo en la base de datos.
-
-    Args:
-        model (schemas.ModelCreate): Datos del modelo a crear.
-        db (Session): Sesión de la base de datos.
-
-    Returns:
-        schemas.Model: Modelo creado con sus relaciones.
-    
-    Raises:
-        HTTPException: Si la marca o el tipo de vehículo no existen,
-                       o si el modelo ya existe para la marca y tipo especificados.
-    """
     # Comprobación adicional de que el nombre no venga vacío o solo con espacios
     if not model.name or not model.name.strip():
         raise HTTPException(
@@ -83,7 +69,6 @@ async def create_model_service(
     
     # Convertir el objeto ORM a un schema de Pydantic utilizando Pydantic v2
     return _schemas.Model.model_validate(model_obj)
-
 
 async def get_all_models_service(db: "Session") -> List[_schemas.Model]:
     models = db.query(_models.Model).options(
