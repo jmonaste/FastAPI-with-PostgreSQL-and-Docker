@@ -7,7 +7,9 @@ from constants.exceptions import (
     VEHICLE_MODEL_NOT_FOUND,
     COLOR_NOT_FOUND,
     INITIAL_STATE_NOT_FOUND,
-    VIN_ALREADY_EXISTS
+    VIN_ALREADY_EXISTS,
+    INVALID_VIN,
+    VEHICLE_NOT_FOUND
 )
 
 @pytest.fixture
@@ -746,7 +748,7 @@ async def test_get_vehicle_by_id_not_found(httpx_client, headers):
     non_existing_vehicle_id = 999999
     response = httpx_client.get(f"/api/vehicles/{non_existing_vehicle_id}", headers=headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND, f"Respuesta: {response.text}"
-    assert response.json()["detail"] == "Vehicle not found"
+    assert response.json()["detail"] == VEHICLE_NOT_FOUND
 
 @pytest.mark.asyncio
 async def test_update_vehicle_success(
@@ -844,14 +846,219 @@ async def test_update_vehicle_success(
     tracked_colors.append(color_id)
     tracked_brands.append(brand_data["id"])
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("new_vin,expected_status,expected_detail, color_hexcode", [
+    ("", status.HTTP_400_BAD_REQUEST, INVALID_VIN, "#FF0088"),
+    ("   ", status.HTTP_400_BAD_REQUEST, INVALID_VIN, "#FF0077"),
+])
+async def test_update_vehicle_invalid(
+    httpx_client, 
+    headers, 
+    new_vin,
+    expected_status,
+    expected_detail,
+    color_hexcode,
+    unique_vehicle_vin, 
+    unique_vehicle_model_name, 
+    unique_color_name, 
+    unique_vehicle_type_name, 
+    unique_brand_name,
+    tracked_brands,
+    tracked_colors,
+    tracked_vehicle_types,
+    tracked_vehicle_models,
+    tracked_vehicles
+    ):
+    """Prueba que la actualización de un vehículo con datos inválidos falle."""
 
+    # Crea un tipo de vehiculo
+    vehicle_type_data = {"type_name": unique_vehicle_type_name}
+    response = httpx_client.post("/api/vehicle/types", headers=headers, json=vehicle_type_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    vehicle_type_data = response.json()
+    assert vehicle_type_data["type_name"] == unique_vehicle_type_name
+    assert "id" in vehicle_type_data
 
+    # Crea una marca de vehiculo
+    brand_data = {"name": unique_brand_name}
+    response = httpx_client.post("/api/brands", headers=headers, json=brand_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    brand_data = response.json()
+    assert brand_data["name"] == unique_brand_name
+    assert "id" in brand_data
 
+    # Crear un modelo de vehículo
+    vehicle_model_data = {
+        "name": unique_vehicle_model_name,
+        "brand_id": brand_data["id"],
+        "type_id": vehicle_type_data["id"]
+    }
+    response = httpx_client.post("/api/models", headers=headers, json=vehicle_model_data)
+    assert response.status_code == status.HTTP_201_CREATED, f"Respuesta: {response.text}"
+    vehicle_model_data = response.json()
+    
+    # Crear un color
+    color_data = {
+            "name": unique_color_name,
+            "hex_code": color_hexcode,
+            "rgb_code": "255,0,0"
+        }
+    create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
+    assert create_color_response.status_code == status.HTTP_201_CREATED, f"Respuesta: {create_color_response.text}"
+    color = create_color_response.json()
+    color_id = color["id"]
+    
+    
+    # Crear un vehículo
+    vehicle_data = {
+        "vehicle_model_id": vehicle_model_data["id"],
+        "vin": unique_vehicle_vin,
+        "color_id": color_id,
+        "is_urgent": True
+    }
+    create_vehicle_response = httpx_client.post("/api/vehicles", headers=headers, json=vehicle_data)
+    assert create_vehicle_response.status_code == status.HTTP_201_CREATED, f"Respuesta: {create_vehicle_response.text}"
+    created_vehicle = create_vehicle_response.json()
+    assert created_vehicle["vehicle_model_id"] == vehicle_data["vehicle_model_id"]
+    assert created_vehicle["vin"] == vehicle_data["vin"]
+    assert created_vehicle["color_id"] == vehicle_data["color_id"]
+    assert created_vehicle["is_urgent"] == vehicle_data["is_urgent"]
+    assert "id" in created_vehicle
+    assert "status_id" in created_vehicle
+    assert "model" in created_vehicle
+    assert "created_at" in created_vehicle
+    assert "updated_at" in created_vehicle
+    
+    # Intentar actualizar con datos inválidos
+    updated_data = {
+        "vehicle_model_id": vehicle_model_data["id"],
+        "vin": new_vin,
+        "color_id": color_id,
+        "is_urgent": True
+    }
+    response = httpx_client.put(f"/api/vehicles/{created_vehicle["id"]}", headers=headers, json=updated_data)
+    assert response.status_code == expected_status, f"Respuesta: {response.text}"
+    assert response.json()["detail"] == expected_detail
 
+    # Limpieza
+    tracked_vehicles.append(created_vehicle["id"])
+    tracked_vehicle_models.append(vehicle_model_data["id"])
+    tracked_vehicle_types.append(vehicle_type_data["id"])
+    tracked_colors.append(color_id)
+    tracked_brands.append(brand_data["id"])
 
+@pytest.mark.asyncio
+async def test_update_nonexistent_vehicle(httpx_client, headers):
+    """Prueba la actualización de un vehículo que no existe."""
+    non_existing_vehicle_id = 999999
+    update_data = {
+        "vehicle_model_id": 1,
+        "vin": "CCC789",
+        "color_id": 1,
+        "is_urgent": True
+    }
+    response = httpx_client.put(f"/api/vehicles/{non_existing_vehicle_id}", headers=headers, json=update_data)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == VEHICLE_NOT_FOUND
 
+@pytest.mark.asyncio
+async def test_delete_vehicle_success(
+    httpx_client, 
+    headers, 
+    unique_vehicle_vin, 
+    unique_vehicle_model_name, 
+    unique_color_name, 
+    unique_vehicle_type_name, 
+    unique_brand_name,
+    tracked_brands,
+    tracked_colors,
+    tracked_vehicle_types,
+    tracked_vehicle_models,
+    tracked_vehicles
+    ):
+    """Prueba la eliminación exitosa de un vehículo existente."""
 
+    # Crea un tipo de vehiculo
+    vehicle_type_data = {"type_name": unique_vehicle_type_name}
+    response = httpx_client.post("/api/vehicle/types", headers=headers, json=vehicle_type_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    vehicle_type_data = response.json()
+    assert vehicle_type_data["type_name"] == unique_vehicle_type_name
+    assert "id" in vehicle_type_data
 
+    # Crea una marca de vehiculo
+    brand_data = {"name": unique_brand_name}
+    response = httpx_client.post("/api/brands", headers=headers, json=brand_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    brand_data = response.json()
+    assert brand_data["name"] == unique_brand_name
+    assert "id" in brand_data
+
+    # Crear un modelo de vehículo
+    vehicle_model_data = {
+        "name": unique_vehicle_model_name,
+        "brand_id": brand_data["id"],
+        "type_id": vehicle_type_data["id"]
+    }
+    response = httpx_client.post("/api/models", headers=headers, json=vehicle_model_data)
+    assert response.status_code == status.HTTP_201_CREATED, f"Respuesta: {response.text}"
+    vehicle_model_data = response.json()
+    
+    # Crear un color
+    color_data = {
+            "name": unique_color_name,
+            "hex_code": "#FF0099",
+            "rgb_code": "255,0,0"
+        }
+    create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
+    assert create_color_response.status_code == status.HTTP_201_CREATED, f"Respuesta: {create_color_response.text}"
+    color = create_color_response.json()
+    color_id = color["id"]
+    
+    
+    # Crear un vehículo
+    vehicle_data = {
+        "vehicle_model_id": vehicle_model_data["id"],
+        "vin": unique_vehicle_vin,
+        "color_id": color_id,
+        "is_urgent": True
+    }
+    create_vehicle_response = httpx_client.post("/api/vehicles", headers=headers, json=vehicle_data)
+    assert create_vehicle_response.status_code == status.HTTP_201_CREATED, f"Respuesta: {create_vehicle_response.text}"
+    created_vehicle = create_vehicle_response.json()
+    assert created_vehicle["vehicle_model_id"] == vehicle_data["vehicle_model_id"]
+    assert created_vehicle["vin"] == vehicle_data["vin"]
+    assert created_vehicle["color_id"] == vehicle_data["color_id"]
+    assert created_vehicle["is_urgent"] == vehicle_data["is_urgent"]
+    assert "id" in created_vehicle
+    assert "status_id" in created_vehicle
+    assert "model" in created_vehicle
+    assert "created_at" in created_vehicle
+    assert "updated_at" in created_vehicle
+    
+    # Eliminar el vehículo
+    delete_response = httpx_client.delete(f"/api/vehicles/{created_vehicle["id"]}", headers=headers)
+    assert delete_response.status_code == status.HTTP_204_NO_CONTENT, f"Respuesta: {delete_response.text}"
+    
+    # Verificar que el vehículo ya no exista
+    get_response = httpx_client.get(f"/api/vehicles/{created_vehicle["id"]}", headers=headers)
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND, f"Respuesta: {get_response.text}"
+    assert get_response.json()["detail"] == VEHICLE_NOT_FOUND
+
+    # Limpieza
+    tracked_vehicles.append(created_vehicle["id"])
+    tracked_vehicle_models.append(vehicle_model_data["id"])
+    tracked_vehicle_types.append(vehicle_type_data["id"])
+    tracked_colors.append(color_id)
+    tracked_brands.append(brand_data["id"])
+
+@pytest.mark.asyncio
+async def test_delete_vehicle_not_found(httpx_client, headers):
+    """Prueba que la eliminación de un vehículo inexistente falle."""
+    non_existing_vehicle_id = 999999
+    response = httpx_client.delete(f"/api/vehicles/{non_existing_vehicle_id}", headers=headers)
+    assert response.status_code == status.HTTP_404_NOT_FOUND, f"Respuesta: {response.text}"
+    assert response.json()["detail"] == VEHICLE_NOT_FOUND
 
 
 

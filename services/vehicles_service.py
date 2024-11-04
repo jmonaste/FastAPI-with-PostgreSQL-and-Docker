@@ -6,21 +6,23 @@ from fastapi import HTTPException, status
 from datetime import datetime, timezone
 from typing import Optional, Union
 from services.states_management_service import register_state_history
+from services.exceptions import (
+    VehicleNotFound,
+    VehicleModelNotFound,
+    VINAlreadyExists,
+    InvalidVIN,
+    ColorNotFound,
+    InitialStateNotFound
+)
 from constants.exceptions import (
     VEHICLE_MODEL_NOT_FOUND,
     COLOR_NOT_FOUND,
-    INITIAL_STATE_NOT_FOUND
+    INITIAL_STATE_NOT_FOUND,
+    VEHICLE_NOT_FOUND,
+    VIN_ALREADY_EXISTS,
+    INVALID_VIN
 )
 
-# Definición de excepciones personalizadas para un manejo más claro
-class VehicleModelNotFound(Exception):
-    pass
-
-class ColorNotFound(Exception):
-    pass
-
-class InitialStateNotFound(Exception):
-    pass
 
 async def create_vehicle_service(
     vehicle: _schemas.VehicleCreate, db: Session, user_id: int
@@ -86,7 +88,7 @@ async def get_vehicle_by_id_service(db: Session, vehicle_id: int):
         .first()
     )
     if not vehicle:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VEHICLE_NOT_FOUND)
     return _schemas.Vehicle.model_validate(vehicle)
 
 async def get_vehicles_service(
@@ -113,38 +115,43 @@ async def get_vehicles_service(
     vehicles = query.offset(skip).limit(limit).all()
     return list(map(_schemas.Vehicle.model_validate, vehicles))
 
-async def update_vehicle_service(db: "Session", vehicle_id: int, vehicle: _schemas.VehicleCreate):
+async def update_vehicle_service(db: Session, vehicle_id: int, vehicle: _schemas.VehicleUpdate):
+    # Fetch the vehicle to update
     db_vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not db_vehicle:
-        return None
-
-    # Verificar si el VIN ya existe en otro vehículo
+        raise VehicleNotFound(VEHICLE_NOT_FOUND)
+    
+    # Validate VIN is not empty or null
+    if vehicle.vin is None or vehicle.vin.strip() == "":
+        raise InvalidVIN(INVALID_VIN)
+    
+    # Check if the VIN is being changed
     if vehicle.vin != db_vehicle.vin:
         existing_vehicle = db.query(_models.Vehicle).filter(
             _models.Vehicle.vin == vehicle.vin
         ).first()
         if existing_vehicle:
-            raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
-
-    # Verificar si el modelo existe
+            raise VINAlreadyExists(VIN_ALREADY_EXISTS)
+    
+    # Verify if the vehicle model exists
     existing_model = db.query(_models.Model).filter(_models.Model.id == vehicle.vehicle_model_id).first()
     if not existing_model:
-        raise HTTPException(status_code=404, detail="Vehicle model not found.")
-
-    # Actualizar los campos
+        raise VehicleModelNotFound(VEHICLE_MODEL_NOT_FOUND)
+    
+    # Update the vehicle fields
     db_vehicle.vehicle_model_id = vehicle.vehicle_model_id
     db_vehicle.vin = vehicle.vin
     db_vehicle.color_id = vehicle.color_id
     db_vehicle.is_urgent = vehicle.is_urgent
-
+    
     try:
         db.commit()
         db.refresh(db_vehicle)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="A vehicle with this VIN already exists.")
-
-    return db_vehicle
+        raise VINAlreadyExists(VIN_ALREADY_EXISTS)
+    
+    return _schemas.Vehicle.model_validate(db_vehicle)
 
 async def delete_vehicle_service(db: "Session", vehicle_id: int) -> Union[bool, dict]:
     try:
@@ -155,7 +162,7 @@ async def delete_vehicle_service(db: "Session", vehicle_id: int) -> Union[bool, 
             # Si el vehículo no existe, lanzar una excepción HTTP 404
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Vehicle not found"
+                detail=VEHICLE_NOT_FOUND
             )
         
         # Eliminar los registros asociados en StateHistory

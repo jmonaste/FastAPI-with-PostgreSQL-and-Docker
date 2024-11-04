@@ -102,6 +102,20 @@ class VehicleType(VehicleTypeBase):
 
 # region Vehicle definition
 
+
+
+class VehicleUpdate(BaseModel):
+    vehicle_model_id: int
+    vin: str = Field(..., min_length=17, max_length=17, description="Vehicle Identification Number")
+    color_id: int
+    is_urgent: bool = False
+
+    @field_validator('vin')
+    def vin_must_not_be_empty(cls, v):
+        if not v or v.strip() == "":
+            raise ValueError("VIN cannot be empty or null.")
+        return v
+
 class VehicleBase(_pydantic.BaseModel):
     vehicle_model_id: int
     vin: str

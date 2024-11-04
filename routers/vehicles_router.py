@@ -8,8 +8,27 @@ import services
 from dependencies import get_current_user
 from services.database_service import get_db
 from services.vehicles_service import create_vehicle_service, get_vehicles_service, update_vehicle_service, delete_vehicle_service, get_vehicle_by_id_service
-from services.vehicles_service import VehicleModelNotFound, ColorNotFound, InitialStateNotFound
-from constants.exceptions import (VIN_ALREADY_EXISTS)
+
+from services.exceptions import (
+    VehicleNotFound,
+    VehicleModelNotFound,
+    VINAlreadyExists,
+    InvalidVIN,
+    ColorNotFound,
+    InitialStateNotFound
+)
+from constants.exceptions import (
+    VEHICLE_MODEL_NOT_FOUND,
+    VIN_ALREADY_EXISTS,
+    VEHICLE_NOT_FOUND,
+    INVALID_VIN,
+    UNEXPECTED_ERROR
+)
+
+
+
+
+
 router = APIRouter(
     prefix="/api/vehicles",
     tags=["Vehicles"],
@@ -59,7 +78,7 @@ async def read_vehicle(
 ):
     db_vehicle = await get_vehicle_by_id_service(db, vehicle_id=vehicle_id)
     if db_vehicle is None:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
+        raise HTTPException(status_code=404, detail=VEHICLE_NOT_FOUND)
     return db_vehicle
 
 
@@ -91,10 +110,26 @@ async def update_vehicle(
     vehicle: schemas.VehicleCreate, 
     db: Session = Depends(get_db)
 ):
-    db_vehicle = await update_vehicle_service(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
-    if db_vehicle is None:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return db_vehicle
+    """
+    Endpoint to update an existing vehicle. Validates input and delegates the update to the service.
+    """
+    try:
+        updated_vehicle = await update_vehicle_service(db=db, vehicle_id=vehicle_id, vehicle=vehicle)
+        return updated_vehicle
+    except VehicleNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except VehicleModelNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except VINAlreadyExists as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except InvalidVIN as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=VIN_ALREADY_EXISTS)
+    except Exception:
+        # Handle unexpected errors
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=UNEXPECTED_ERROR)
 
 
 @router.delete(
