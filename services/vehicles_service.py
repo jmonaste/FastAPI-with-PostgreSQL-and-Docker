@@ -91,6 +91,15 @@ async def get_vehicle_by_id_service(db: Session, vehicle_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=VEHICLE_NOT_FOUND)
     return _schemas.Vehicle.model_validate(vehicle)
 
+
+
+
+
+
+
+
+
+
 async def get_vehicles_service(
     db: Session,
     skip: int = 0,
@@ -114,6 +123,13 @@ async def get_vehicles_service(
     
     vehicles = query.offset(skip).limit(limit).all()
     return list(map(_schemas.Vehicle.model_validate, vehicles))
+
+
+
+
+
+
+
 
 async def update_vehicle_service(db: Session, vehicle_id: int, vehicle: _schemas.VehicleUpdate):
     # Fetch the vehicle to update
