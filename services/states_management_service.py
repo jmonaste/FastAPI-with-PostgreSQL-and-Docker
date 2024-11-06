@@ -83,6 +83,7 @@ async def change_vehicle_state_service(
     db: Session,
     comment_id: Optional[int] = None
 ) -> _schemas.StateHistory:
+    
     # Obtener el vehículo
     vehicle = db.query(_models.Vehicle).filter(_models.Vehicle.id == vehicle_id).first()
     if not vehicle:
@@ -108,6 +109,8 @@ async def change_vehicle_state_service(
             _models.StateComment.id == comment_id,
             _models.StateComment.state_id == new_state_id
         ).first()
+
+        print(comment) 
         if not comment:
             raise ValueError("El comentario proporcionado no es válido para el estado seleccionado.")
     else:

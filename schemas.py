@@ -246,6 +246,8 @@ class TransitionUpdate(TransitionBase):
 
 class Transition(TransitionBase):
     id: int
+    from_state: State
+    to_state: State
     created_at: _dt.datetime
     updated_at: _dt.datetime
 
@@ -258,7 +260,7 @@ class Transition(TransitionBase):
 class StateComment(BaseModel):
     id: int
     state_id: int
-    text: str
+    comment_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -267,7 +269,7 @@ class StateHistoryBase(BaseModel):
     from_state_id: Optional[int] = None
     to_state_id: int
     user_id: int
-    comment_id: Optional[int] = None
+    #comment_id: Optional[int] = None
     comment: Optional[StateComment] = None
 
 
