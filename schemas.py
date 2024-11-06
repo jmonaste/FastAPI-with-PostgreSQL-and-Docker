@@ -155,6 +155,32 @@ class Color(ColorBase):
 
 # endregion
 
+# region StateComment definition
+
+class StateCommentBase(BaseModel):
+    comment: str
+
+class StateCommentRead(StateCommentBase):
+    id: int
+    state_id: int
+    created_at: _dt.datetime
+    updated_at: _dt.datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class StateCommentCreate(StateCommentBase):
+    state_id: int  # ID del estado al que pertenece el comentario
+
+class StateCommentUpdate(StateCommentBase):
+    pass
+
+class StateComment(StateCommentBase):
+    pass
+
+    model_config = ConfigDict(from_attributes=True)
+
+# endregion
+
 # region State definition
 
 class StateBase(BaseModel):
@@ -228,7 +254,6 @@ class Vehicle(VehicleBase):
 
 # endregion
 
-
 # region Transition definition
 
 class TransitionBase(BaseModel):
@@ -287,26 +312,7 @@ class StateHistory(StateHistoryBase):
         
 # endregion
 
-# region StateComment definition
 
-class StateCommentBase(_pydantic.BaseModel):
-    comment: str
-
-class StateCommentCreate(StateCommentBase):
-    state_id: int  # ID del estado al que pertenece el comentario
-
-class StateCommentRead(StateCommentBase):
-    id: int
-    state_id: int
-    created_at: _dt.datetime
-    updated_at: _dt.datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-class StateCommentUpdate(StateCommentBase):
-    pass
-
-# endregion
 
 
 
