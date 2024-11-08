@@ -149,8 +149,8 @@ async def get_state_comments_service(state_id: int, db: Session) -> List[_schema
     # Obtener los comentarios asociados al estado
     comments = db.query(_models.StateComment).filter(_models.StateComment.state_id == state_id).all()
     
-    if not comments:
-        raise StateCommentsNotFoundException(STATE_COMMENT_NOT_FOUND)
+    #if not comments:
+    #    raise StateCommentsNotFoundException(STATE_COMMENT_NOT_FOUND)
     
     return [_schemas.StateCommentRead.model_validate(comment) for comment in comments]
 

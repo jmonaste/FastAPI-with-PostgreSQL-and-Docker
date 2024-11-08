@@ -131,14 +131,13 @@ async def get_state_comments(
     state_id: int,
     db: Session = Depends(get_db),
 ):
-
     try:
         comments = await get_state_comments_service(state_id=state_id, db=db)
         return comments
     except StateNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except StateCommentsNotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    #except StateCommentsNotFoundException as e:
+    #    raise HTTPException(status_code=status.HTTP_410_GONE, detail=str(e))
     except Exception as e:
         # Manejo de errores inesperados
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error inesperado.")
