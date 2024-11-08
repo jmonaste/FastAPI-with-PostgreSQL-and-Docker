@@ -21,6 +21,7 @@ VENV/
 env.bak/
 venv.bak/
 .venv/
+/venv/
 
 # VSCode settings
 .vscode/
@@ -53,3 +54,6 @@ pip-delete-this-directory.txt
 # PostgreSQL
 pgdata/
 *.sql
+venv/Lib/site-packages/pydantic/__pycache__/dataclasses.cpython-312.pyc
+venv/Lib/site-packages/pydantic/__pycache__/root_model.cpython-312.pyc
+venv/Lib/site-packages/pydantic/_internal/__pycache__/_dataclasses.cpython-312.pyc
