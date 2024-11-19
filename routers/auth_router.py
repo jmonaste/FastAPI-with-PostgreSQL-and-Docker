@@ -170,7 +170,6 @@ def logout(token_refresh: schemas.TokenRefresh, db: Session = Depends(get_db)):
     return {"message": "Logged out successfully"}
 
 
-
 @router.get("/protected", response_model=schemas.UserOut, summary="Endpoint protegido")
 def read_protected(current_user: models.User = Depends(get_current_user)):
     """
