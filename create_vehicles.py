@@ -203,6 +203,8 @@ VIN_LIST = [
 ]
 
 
+
+
 @pytest.fixture
 def headers(auth_tokens):
     """Prepara los encabezados de autorización para las solicitudes."""

@@ -61,12 +61,6 @@ class VehicleType(Base):
     created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
     updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Nuevos campos añadidos (urgencias)
-    urgency_delivery_date = Column(_sql.DateTime(timezone=True), nullable=True)
-    urgency_delivery_time = Column(Time, nullable=True)
-    urgency_reason = Column(String, nullable=True)
-    observations = Column(String, nullable=True)
-
     models = relationship('Model', back_populates='vehicle_type')
 
 class State(Base):
@@ -114,6 +108,12 @@ class Vehicle(Base):
     is_urgent = Column(_sql.Boolean, default=False)  # Por defecto no es urgente
     status_id = Column(Integer, _sql.ForeignKey('states.id'), nullable=False)
     color_id = Column(Integer, _sql.ForeignKey('colors.id'), nullable=True)
+
+    # Nuevos campos añadidos (urgencias)
+    urgency_delivery_date = Column(_sql.DateTime(timezone=True), nullable=True)
+    urgency_delivery_time = Column(Time, nullable=True)
+    urgency_reason = Column(String, nullable=True)
+    observations = Column(String, nullable=True)
 
     status = relationship('State')
     state_history = relationship('StateHistory', back_populates='vehicle', cascade="all, delete-orphan")

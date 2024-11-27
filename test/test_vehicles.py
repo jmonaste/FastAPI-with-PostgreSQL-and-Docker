@@ -94,7 +94,7 @@ async def test_create_vehicle_success(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF1010",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -278,7 +278,7 @@ async def test_create_vehicle_missing_fields_vin(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF8383",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -524,7 +524,7 @@ async def test_create_vehicle_duplicate_vin(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF4599",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -618,7 +618,7 @@ async def test_get_all_vehicles(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF5469",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -628,17 +628,23 @@ async def test_get_all_vehicles(
     
     # Crear algunos vehículos
     vehicles = [
-        {"vehicle_model_id": vehicle_model_data["id"], "vin": f"VIN{uuid.uuid4().hex[:10].upper()}", "color_id": color_id, "is_urgent": True},
-        {"vehicle_model_id": vehicle_model_data["id"], "vin": f"VIN{uuid.uuid4().hex[:10].upper()}", "color_id": color_id, "is_urgent": False},
+        {"vehicle_model_id": vehicle_model_data["id"], "vin": f"VINTEST{uuid.uuid4().hex[:10].upper()}", "color_id": color_id, "is_urgent": True},
+        {"vehicle_model_id": vehicle_model_data["id"], "vin": f"VINTEST{uuid.uuid4().hex[:10].upper()}", "color_id": color_id, "is_urgent": False},
     ]
     for vehicle in vehicles:
         response = httpx_client.post("/api/vehicles", headers=headers, json=vehicle)
         assert response.status_code == status.HTTP_201_CREATED, f"Respuesta: {response.text}"
         created_vehicle = response.json()
         tracked_vehicles.append(created_vehicle["id"])
-    
+
+    # Parámetros de consulta
+    params = {
+        "skip": 0,   # Índice inicial de los resultados
+        "limit": 100  # Máximo número de resultados a recuperar
+    }
+        
     # Recuperar todos los vehículos
-    response = httpx_client.get("/api/vehicles", headers=headers)
+    response = httpx_client.get("/api/vehicles", headers=headers, params=params)
     assert response.status_code == status.HTTP_200_OK, f"Respuesta: {response.text}"
     data = response.json()
     assert isinstance(data, list), "La respuesta debe ser una lista"
@@ -697,7 +703,7 @@ async def test_get_vehicle_by_id_success(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF6666",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -796,7 +802,7 @@ async def test_update_vehicle_success(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF6666",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)
@@ -1007,7 +1013,7 @@ async def test_delete_vehicle_success(
     # Crear un color
     color_data = {
             "name": unique_color_name,
-            "hex_code": "#FF0099",
+            "hex_code": "#FF6464",
             "rgb_code": "255,0,0"
         }
     create_color_response = httpx_client.post("/api/colors", headers=headers, json=color_data)

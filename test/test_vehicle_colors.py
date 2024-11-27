@@ -198,7 +198,7 @@ class TestColorsAPI:
         headers = {"Authorization": f"Bearer {auth_tokens['access_token']}"}
         color_data = {
             "name": "Purple",
-            "hex_code": "#800080",
+            "hex_code": "#111180",
             "rgb_code": "128,0,128"
         }
         # Crear el primer color
@@ -373,7 +373,7 @@ class TestColorsAPI:
         """
         headers = {"Authorization": f"Bearer {auth_tokens['access_token']}"}
         # Crear un color válido
-        color_data = {"name": "Brown", "hex_code": "#A52A2A", "rgb_code": "165,42,42"}
+        color_data = {"name": "Brown", "hex_code": "#A5200A", "rgb_code": "165,42,42"}
         response = httpx_client.post("/api/colors", json=color_data, headers=headers)
         assert response.status_code == status.HTTP_201_CREATED, f"Respuesta: {response.text}"
         created_color = response.json()
@@ -381,7 +381,7 @@ class TestColorsAPI:
         tracked_colors.append(color_id)
 
         # Intentar actualizar con un nombre vacío y hex_code inválido
-        updated_data = {"name": "   ", "hex_code": "A52A2A", "rgb_code": "165,42,42"}  # Falta el '#'
+        updated_data = {"name": "   ", "hex_code": "A52111", "rgb_code": "165,42,42"}  # Falta el '#'
         response = httpx_client.put(f"/api/colors/{color_id}", json=updated_data, headers=headers)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, f"Respuesta: {response.text}"
         errors = response.json().get("detail", [])
@@ -409,7 +409,7 @@ class TestColorsAPI:
         headers = {"Authorization": f"Bearer {auth_tokens['access_token']}"}
         # Crear dos colores distintos
         color1 = {"name": "Teal", "hex_code": "#008080", "rgb_code": "0,128,128"}
-        color2 = {"name": "Olive", "hex_code": "#808000", "rgb_code": "128,128,0"}
+        color2 = {"name": "Olive", "hex_code": "#808990", "rgb_code": "128,128,0"}
 
         response1 = httpx_client.post("/api/colors", json=color1, headers=headers)
         assert response1.status_code == status.HTTP_201_CREATED, f"Respuesta: {response1.text}"
