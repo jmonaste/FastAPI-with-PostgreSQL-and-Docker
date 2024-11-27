@@ -3,7 +3,7 @@ import sqlalchemy as sa
 import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
-from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, Time
 from sqlalchemy.orm import declarative_base
 from typing import TYPE_CHECKING
 
@@ -60,6 +60,13 @@ class VehicleType(Base):
     type_name = Column(String, unique=True, index=True)
     created_at = Column(_sql.DateTime(timezone=True), server_default=func.now())
     updated_at = Column(_sql.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Nuevos campos añadidos (urgencias)
+    urgency_delivery_date = Column(_sql.DateTime(timezone=True), nullable=True)
+    urgency_delivery_time = Column(Time, nullable=True)
+    urgency_reason = Column(String, nullable=True)
+    observations = Column(String, nullable=True)
+
     models = relationship('Model', back_populates='vehicle_type')
 
 class State(Base):

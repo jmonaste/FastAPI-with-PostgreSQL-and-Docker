@@ -224,6 +224,11 @@ class VehicleUpdate(BaseModel):
     color_id: int
     is_urgent: bool = False
 
+    urgency_delivery_date: _dt.datetime | None = None   # Fecha de entrega de urgencia
+    urgency_delivery_time: _dt.time | None = None       # Hora de entrega de urgencia
+    urgency_reason: str | None = None                   # Motivo de la urgencia
+    observations: str | None = None                     # Observaciones (texto)
+
     @field_validator('vin')
     def vin_must_not_be_empty(cls, v):
         if not v or v.strip() == "":
@@ -235,7 +240,12 @@ class VehicleBase(_pydantic.BaseModel):
     vin: str
     color_id: int
     is_urgent: bool
-    
+
+    urgency_delivery_date: _dt.datetime | None = None   # Fecha de entrega de urgencia
+    urgency_delivery_time: _dt.time | None = None       # Hora de entrega de urgencia
+    urgency_reason: str | None = None                   # Motivo de la urgencia
+    observations: str | None = None                     # Observaciones (texto)
+
     model_config = ConfigDict(arbitrary_types_allowed=True)  # Reemplazo de Config
 
 class VehicleCreate(VehicleBase):
