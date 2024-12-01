@@ -94,7 +94,11 @@ async def delete_color(db: "Session", color_id: int) -> bool:
 async def fetch_all_colors(db: "Session") -> List[_models.Color]:
     return db.query(_models.Color).all()
 
-
+async def get_color_id_by_name_service(db: Session, color_name: str) -> int:
+    color = db.query(_models.Color).filter(_models.Color.name == color_name).first()
+    if not color:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Color not found")
+    return color.id
 
 
 

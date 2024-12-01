@@ -1,10 +1,10 @@
 # routers/colors.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List
 from sqlalchemy.orm import Session
 import schemas
-from services.colors_service import get_color, add_color, update_color, delete_color, fetch_all_colors
+from services.colors_service import get_color, add_color, update_color, delete_color, fetch_all_colors, get_color_id_by_name_service
 from dependencies import get_current_user
 from services.database_service import get_db
 
@@ -97,7 +97,19 @@ async def get_all_colors(
             detail="Error al obtener los colores."
         ) from e
 
-
+@router.get(
+    "/",
+    summary="Obtener ID del color por nombre",
+    description="Obtiene el ID del color a partir del nombre del color.",
+)
+async def get_color_id_by_name(name: str = Query(..., description="Nombre del color para buscar su ID"), db: Session = Depends(get_db)):
+    try:
+        color_id = await get_color_id_by_name_service(db, name)
+        return {"color_id": color_id}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error inesperado.")
 
 
 
