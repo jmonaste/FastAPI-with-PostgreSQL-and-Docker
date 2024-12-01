@@ -1,6 +1,6 @@
 # endpoints/models.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import models
@@ -13,7 +13,8 @@ from services.models_service import (
     get_all_models_service,
     get_model_service,
     delete_model_service,
-    update_model_service
+    update_model_service,
+    get_model_id_by_name_service
 )
 
 router = APIRouter(
@@ -163,3 +164,24 @@ async def update_model(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Another model with the same name, brand, and type already exists")
+
+
+
+
+@router.get(
+    "/",
+    summary="Obtener ID del modelo por nombre",
+    description="Obtiene el ID del modelo a partir del nombre del modelo.",
+)
+async def get_model_id_by_name(name: str = Query(..., description="Nombre del modelo para buscar su ID"), db: Session = Depends(get_db)):
+    try:
+        model_id = await get_model_id_by_name_service(db, name)
+        return {"model_id": model_id}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error inesperado.")
+
+
+
+

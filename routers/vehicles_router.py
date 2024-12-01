@@ -147,3 +147,9 @@ async def delete_vehicle(
     if not success:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     return {"detail": "Vehicle successfully deleted"}
+
+
+
+
+
+

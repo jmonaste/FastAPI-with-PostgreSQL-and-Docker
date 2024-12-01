@@ -82,7 +82,6 @@ async def update_color(db: Session, color_id: int, color_data: _schemas.ColorCre
 
     return _schemas.Color.model_validate(db_color)
 
-
 async def delete_color(db: "Session", color_id: int) -> bool:
     db_color = db.query(_models.Color).filter(_models.Color.id == color_id).first()
     if not db_color:
@@ -94,4 +93,12 @@ async def delete_color(db: "Session", color_id: int) -> bool:
 
 async def fetch_all_colors(db: "Session") -> List[_models.Color]:
     return db.query(_models.Color).all()
+
+
+
+
+
+
+
+
 

@@ -97,3 +97,12 @@ async def get_all_colors(
             detail="Error al obtener los colores."
         ) from e
 
+
+
+
+
+
+
+
+
+

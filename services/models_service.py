@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from datetime import datetime, timezone
 
 from datetime import datetime, timezone
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 import models as _models
 import schemas as _schemas
@@ -154,3 +154,17 @@ async def update_model_service(model_id: int, model: _schemas.ModelCreate, db: "
     db.commit()
     db.refresh(existing_model)
     return _schemas.Model.model_validate(existing_model)
+
+async def get_model_id_by_name_service(db: Session, model_name: str) -> int:
+    model = db.query(_models.Model).filter(_models.Model.name == model_name).first()
+    if not model:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
+    return model.id
+
+
+
+
+
+
+
+
