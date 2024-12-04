@@ -21,7 +21,6 @@ VENV/
 env.bak/
 venv.bak/
 .venv/
-/venv/
 
 # VSCode settings
 .vscode/
