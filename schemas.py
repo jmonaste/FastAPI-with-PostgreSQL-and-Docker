@@ -217,7 +217,11 @@ class StateChangeRequest(BaseModel):
 
 # region Vehicle definition
 
+class VehicleExistsResponse(BaseModel):
+    id: int
+    created: bool = False
 
+    
 class VehicleUpdate(BaseModel):
     vehicle_model_id: int
     vin: str = Field(..., min_length=17, max_length=17, description="Vehicle Identification Number")

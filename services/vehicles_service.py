@@ -80,6 +80,7 @@ async def create_vehicle_service(
 
     return _schemas.Vehicle.model_validate(vehicle_model)
 
+
 async def get_vehicle_by_id_service(db: Session, vehicle_id: int):
     vehicle = (
         db.query(_models.Vehicle)

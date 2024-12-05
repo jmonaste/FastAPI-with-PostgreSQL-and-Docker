@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from typing import Union
 from sqlalchemy.exc import IntegrityError
 import models
 import schemas
@@ -40,7 +41,7 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=schemas.Vehicle,
+    response_model=Union[schemas.Vehicle, schemas.VehicleExistsResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Crear un nuevo vehículo",
     description="Crea un nuevo vehículo si no existe.",
@@ -61,7 +62,12 @@ async def create_vehicle(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=VIN_ALREADY_EXISTS)
+        # Buscar el vehículo existente por el VIN
+        existing_vehicle = db.query(models.Vehicle).filter(models.Vehicle.vin == vehicle.vin).first()
+        if existing_vehicle:
+            return {"id": existing_vehicle.id, "created": "false"}  # Indica que el vehículo ya existía
+        else:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=VIN_ALREADY_EXISTS)
     except Exception as e:
         # Manejo de errores inesperados
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ocurrió un error inesperado.")
@@ -82,7 +88,6 @@ async def read_vehicle(
         raise HTTPException(status_code=404, detail=VEHICLE_NOT_FOUND)
     return db_vehicle
 
-
 @router.get(
     "",
     response_model=List[schemas.Vehicle],
@@ -98,7 +103,6 @@ async def get_vehicles(
 ):
     vehicles = await get_vehicles_service(db=db, skip=skip, limit=limit, in_progress=in_progress, vin=vin)
     return vehicles
-
 
 @router.put(
     "/{vehicle_id}",
@@ -131,7 +135,6 @@ async def update_vehicle(
     except Exception:
         # Handle unexpected errors
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=UNEXPECTED_ERROR)
-
 
 @router.delete(
     "/{vehicle_id}",
