@@ -325,5 +325,8 @@ class StateHistory(StateHistoryBase):
 
 
 
-
+# region imagen en base64 definition
+class ImageBase64Request(BaseModel):
+    image: str
+# endregion
 
