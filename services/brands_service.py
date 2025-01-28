@@ -7,7 +7,6 @@ from fastapi import HTTPException, status
 
 
 
-
 async def create_new_brand_service(
     brand: _schemas.BrandCreate, db: "Session"
 ) -> _schemas.Brand:
@@ -38,8 +37,6 @@ async def delete_brand_service(brand_id: int, db: "Session") -> bool:
         db.commit()
         return True
     return False
-
-
 
 async def update_brand_service(
     brand_data: _schemas.BrandCreate,  # Asegúrate de que estás utilizando el esquema correcto

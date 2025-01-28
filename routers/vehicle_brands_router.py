@@ -8,6 +8,7 @@ from dependencies import get_current_user
 from services.database_service import get_db
 from services.brands_service import create_new_brand_service, get_all_brands_service, get_brand_service, delete_brand_service, update_brand_service
 
+
 router = APIRouter(
     prefix="/api/brands",
     tags=["Brands"],

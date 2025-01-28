@@ -8,6 +8,7 @@ from services.colors_service import get_color, add_color, update_color, delete_c
 from dependencies import get_current_user
 from services.database_service import get_db
 
+
 router = APIRouter(
     prefix="/api/colors",
     tags=["Colors"],
@@ -86,11 +87,12 @@ async def remove_color(
     description="Devuelve una lista de todos los colores disponibles.",
 )
 async def get_all_colors(
+    skip: int = 0,
+    limit: int = 10,    
     db: Session = Depends(get_db),
 ):
     try:
-        colors = await fetch_all_colors(db=db)  # Llama a la función de servicio renombrada
-        return colors
+        return await fetch_all_colors(db=db, skip=skip, limit=limit)  # Llama a la función de servicio renombrada
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -91,8 +91,9 @@ async def delete_color(db: "Session", color_id: int) -> bool:
     db.commit()
     return True
 
-async def fetch_all_colors(db: "Session") -> List[_models.Color]:
-    return db.query(_models.Color).all()
+async def fetch_all_colors(db: "Session", skip: int = 0, limit: int = 10) -> List[_models.Color]:
+    colors = db.query(_models.Color).offset(skip).limit(limit).all()
+    return list(map(_schemas.Color.model_validate, colors))
 
 async def get_color_id_by_name_service(db: Session, color_name: str) -> int:
     color = db.query(_models.Color).filter(_models.Color.name == color_name).first()
