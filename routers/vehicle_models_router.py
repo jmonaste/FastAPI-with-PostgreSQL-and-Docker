@@ -17,6 +17,7 @@ from services.models_service import (
     get_model_id_by_name_service
 )
 
+
 router = APIRouter(
     prefix="/api/models",
     tags=["Models"],
@@ -73,9 +74,11 @@ async def create_model(
     description="Recupera una lista de todos los modelos disponibles."
 )
 async def get_models(
+    skip: int = 0,
+    limit: int = 10,    
     db: Session = Depends(get_db)              
 ):
-    return await get_all_models_service(db=db)
+    return await get_all_models_service(db=db, skip=skip, limit=limit)
 
 @router.get(
     "/{model_id}",
@@ -164,9 +167,6 @@ async def update_model(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Another model with the same name, brand, and type already exists")
-
-
-
 
 @router.get(
     "/",

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 import models as _models
 import schemas as _schemas
 
+
 async def create_model_service(
     model: _schemas.ModelCreate, db: "Session"
 ) -> _schemas.Model:
@@ -70,11 +71,11 @@ async def create_model_service(
     # Convertir el objeto ORM a un schema de Pydantic utilizando Pydantic v2
     return _schemas.Model.model_validate(model_obj)
 
-async def get_all_models_service(db: "Session") -> List[_schemas.Model]:
+async def get_all_models_service(db: "Session", skip: int = 0, limit: int = 10) -> List[_schemas.Model]:
     models = db.query(_models.Model).options(
         joinedload(_models.Model.brand),
         joinedload(_models.Model.vehicle_type)
-    ).all()
+    ).offset(skip).limit(limit).all()
     return list(map(_schemas.Model.model_validate, models))
 
 async def get_model_service(model_id: int, db: "Session") -> _schemas.Model:
