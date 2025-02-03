@@ -4,6 +4,7 @@ import sqlalchemy as _sql
 from sqlalchemy.orm import relationship
 import database as _database
 from sqlalchemy import func, Enum, Column, Integer, String, Boolean, ForeignKey, UniqueConstraint, Time
+import enum
 from sqlalchemy.orm import declarative_base
 from typing import TYPE_CHECKING
 
@@ -12,12 +13,18 @@ from typing import TYPE_CHECKING
 
 Base = declarative_base()
 
+class UserRole(enum.Enum):
+    admin = "admin"
+    client = "client"
+
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    role = Column(Enum(UserRole), default=UserRole.client, nullable=False)
 
     state_histories = relationship("StateHistory", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user")    

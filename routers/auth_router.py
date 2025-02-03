@@ -176,3 +176,11 @@ def read_protected(current_user: models.User = Depends(get_current_user)):
     Endpoint de ejemplo que requiere autenticación.
     """
     return current_user
+
+
+@router.get("/users/me", response_model=schemas.UserOut, summary="Obtener datos del usuario autenticado")
+def get_current_user_data(current_user: models.User = Depends(get_current_user)):
+    """
+    Devuelve la información del usuario autenticado, incluyendo su rol.
+    """
+    return current_user

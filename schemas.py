@@ -3,23 +3,31 @@ import pydantic as _pydantic
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
 import re
+from enum import Enum
 
 
 # region User definition
+
+class UserRole(str, Enum):
+    admin = "admin"
+    client = "client"
 
 class UserBase(BaseModel):
     username: str
 
 class UserCreate(UserBase):
     password: str
+    role: UserRole = UserRole.client  # El rol por defecto es "cliente"
 
 class UserRead(UserBase):
     id: int
+    role: UserRole
 
 class UserOut(BaseModel):
     id: int
     username: str
     is_active: bool
+    role: UserRole
     
     model_config = ConfigDict(from_attributes=True)
 

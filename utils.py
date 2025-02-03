@@ -69,8 +69,11 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# Función para obtener el usuario actual
+# Función para obtener el usuario actual con su rol
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Obtiene el usuario autenticado a partir del token de acceso.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -83,7 +86,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
+
     user = get_user(db, username=username)
     if user is None:
         raise credentials_exception
-    return user
+
+    # Asegurar que el usuario tiene el atributo 'role'
+    if not hasattr(user, "role"):
+        raise HTTPException(status_code=500, detail="User model does not include role field")
+
+    return user  # Devuelve el usuario completo con su rol
+
